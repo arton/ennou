@@ -1,0 +1,2 @@
+ennou.o : ennou.c ennou.h ruby.h
+
