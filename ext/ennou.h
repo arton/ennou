@@ -20,6 +20,7 @@
 
 typedef struct EnnouIO
 {
+    size_t requestContentLength;
     HTTP_REQUEST_ID requestId;
 } ennou_io_t;
 

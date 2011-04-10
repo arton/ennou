@@ -316,4 +316,38 @@ class TestServer < Test::Unit::TestCase
       end
     end
   end
+
+  def test_n_small_posts
+    data = 'a' * 99999
+    Ennou::Server.open(QNAME) do |s|
+      begin
+        s.add 'http://+:80/test'
+        # by administrator
+        ts = Thread.start do
+          loop do
+            env, io = s.wait(0.5)
+            Thread.start do
+              assert_equal data, io.input.read
+              io.lump 200, { 'content-type' => "text/plain" }, 'hello'
+            end
+          end
+        end
+        a = []
+        10.times do 
+          a << Thread.start do
+            Net::HTTP.start('localhost') do |http|
+              resp = http.post('/test/post', data)
+              assert_equal 'hello', resp.body
+            end
+          end
+        end
+        a.each do |t|
+          t.join
+        end
+        ts.kill
+      rescue SystemCallError => e
+        assert(/\(5\)/ =~ e.message)
+      end
+    end
+  end
 end

@@ -472,10 +472,61 @@ static void resp_finish(VALUE self, bool disc)
 
 static VALUE req_input(VALUE self)
 {
+    ennou_io_t* ennoup;
+    OVERLAPPED over;
+    ULONG ret;
+    VALUE reqbody;
+    HANDLE queue = (HANDLE)NUM2LL(rb_ivar_get(rb_ivar_get(self, id_server_id), id_handle_id));
     VALUE input = rb_ivar_get(self, id_input_id);
     if (input != Qnil) return input;
-
-    return Qnil;
+    memset(&over, 0, sizeof(over));
+    over.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    Data_Get_Struct(self, ennou_io_t, ennoup);
+    if (ennoup->requestContentLength)
+    {
+        char* buff;
+        DWORD bytesRead;
+        size_t read;
+        size_t len = ennoup->requestContentLength;
+        reqbody = rb_external_str_new_with_enc(NULL, len, rb_ascii8bit_encoding());
+        buff = StringValuePtr(reqbody);
+        for (read = 0; read < len;)
+        {
+            ret = HttpReceiveRequestEntityBody(queue, ennoup->requestId,
+                                               0, 
+                                               buff + read, len - read,
+                                               NULL, &over);
+            if (ret == ERROR_HANDLE_EOF) break;
+            if (ret != NO_ERROR)
+            {
+                ret = wait_io(ret, &over, "HttpReceiveRequestEntityBody", -1);
+                if (ret == WAIT_TIMEOUT)
+                {
+                    CloseHandle(over.hEvent);
+                    return Qnil;
+                }
+            }
+            if (!GetOverlappedResult(queue, &over, &bytesRead, FALSE))
+            {
+                CloseHandle(over.hEvent);                
+                rb_raise(rb_eSystemCallError, "retrieve request body (%d)",  GetLastError());
+            }
+            read += bytesRead;
+            ResetEvent(over.hEvent);
+        }
+        if (read < len)
+        {
+            rb_str_set_len(reqbody, read);
+        }
+        rb_ivar_set(self, id_input_id,
+                    input = rb_class_new_instance(1, &reqbody, stringio));
+    }
+    else
+    {
+        
+    }
+    CloseHandle(over.hEvent);
+    return input;
 }
 
 static VALUE resp_close(VALUE self)
@@ -726,26 +777,11 @@ static VALUE server_wait(VALUE self, VALUE secs)
     else if (req->Headers.KnownHeaders[HttpHeaderContentLength].RawValueLength > 0
              && req->Headers.KnownHeaders[HttpHeaderContentLength].RawValueLength < 7)
     {
-        char* buff;
-        int reqlen = atoi(req->Headers.KnownHeaders[HttpHeaderContentLength].pRawValue);
-        reqbody = rb_external_str_new_with_enc(NULL, reqlen, rb_ascii8bit_encoding());
-        buff = StringValuePtr(reqbody);
-        ResetEvent(over.hEvent);
-        ret = HttpReceiveRequestEntityBody(queue, req->RequestId,
-                                           HTTP_RECEIVE_REQUEST_ENTITY_BODY_FLAG_FILL_BUFFER,
-                                           buff, reqlen,
-                                           NULL, &over);
-        if (ret != NO_ERROR)
+        ennoup->requestContentLength = atoi(req->Headers.KnownHeaders[HttpHeaderContentLength].pRawValue);
+        if (ennoup->requestContentLength < 0)
         {
-            ret = wait_io(ret, &over, "HttpReceiveRequestEntityBody",
-                          GetTickCount64() + (ULONGLONG)to);
-            if (ret == WAIT_TIMEOUT)
-            {
-                CloseHandle(over.hEvent);
-                return Qnil;
-            }
+            ennoup->requestContentLength = 0;
         }
-        *(buff + reqlen) = '\0';
     }
     CloseHandle(over.hEvent);
     if (!NIL_P(reqbody))
