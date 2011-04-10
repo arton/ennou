@@ -2,6 +2,7 @@
 require 'ennou'
 require 'test/unit'
 require 'open-uri'
+require 'net/http'
 
 class TestServer < Test::Unit::TestCase
   QNAME = "TEST_QUEUE"
@@ -287,6 +288,31 @@ class TestServer < Test::Unit::TestCase
         ts.kill
       rescue SystemCallError => e
         assert(/\(5\)/ =~ e.message)
+      end
+    end
+  end
+  
+  def test_small_post
+    data = 'a' * 999999
+    Ennou::Server.open(QNAME) do |s|
+      begin
+        s.add 'http://+:80/test/'
+        # by administrator
+        t = Thread.start do
+          Net::HTTP.start('localhost') do |http|
+            resp = http.post('/test/post', data)
+            assert_equal 'hello', resp.body
+          end
+        end
+        env, io = s.wait(0.1)
+        assert_equal data, io.input.read
+        io.status = 200
+        io.headers = { 'content-type' => "text/plain" }
+        io.write 'hello'
+        io.close
+        t.join
+      rescue SystemCallError => e
+        assert(e.message, /\(5\)/ =~ e.message)
       end
     end
   end

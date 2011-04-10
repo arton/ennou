@@ -34,6 +34,8 @@
 #define ASSIGN_STRING(name) name = rb_str_freeze(rb_str_new2(#name)); \
     rb_define_const(ennou, #name, name)
 
+#define STRING_IO_MAX 100000;
+
 typedef enum bool_t {
     false = 0,
     true = 1,
@@ -43,6 +45,7 @@ static VALUE ennou;
 static VALUE ennou_io;
 static VALUE server_class;
 static VALUE utf16_enc;
+static VALUE stringio;
 static VALUE EMPTY_STRING;
 
 static VALUE REQUEST_METHOD;
@@ -169,6 +172,7 @@ static ID id_headers_id;
 static ID id_body_id;
 static ID id_server_id;
 static ID id_wrote_id;
+static ID id_input_id;
 static ID id_content_length_id;
 static ID id_str_encode;
 static ID id_bytesize;
@@ -466,6 +470,14 @@ static void resp_finish(VALUE self, bool disc)
     rb_ivar_set(self, id_wrote_id, Qnil);
 }
 
+static VALUE req_input(VALUE self)
+{
+    VALUE input = rb_ivar_get(self, id_input_id);
+    if (input != Qnil) return input;
+
+    return Qnil;
+}
+
 static VALUE resp_close(VALUE self)
 {
     resp_finish(self, false);
@@ -594,9 +606,9 @@ static VALUE server_remove(VALUE self, VALUE uri)
 
 static VALUE server_wait(VALUE self, VALUE secs)
 {
-    VALUE result, resp, env = rb_hash_new();
+    VALUE result, resp, reqbody, env = rb_hash_new();
     ennou_io_t* ennoup;
-    VALUE handle = rb_ivar_get(self, id_handle_id);
+    HANDLE queue = (HANDLE)NUM2LL(rb_ivar_get(self, id_handle_id));
     BYTE buff[3000];
     char protobuff[64];
     HTTP_REQUEST* req = (HTTP_REQUEST*)buff;
@@ -608,7 +620,7 @@ static VALUE server_wait(VALUE self, VALUE secs)
     memset(&over, 0, sizeof(over));
     over.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     rb_ivar_set(self, id_event_id, LL2NUM((__int64)over.hEvent));
-    ret = HttpReceiveHttpRequest((HANDLE)NUM2LL(handle), HTTP_NULL_ID, 0,
+    ret = HttpReceiveHttpRequest(queue, HTTP_NULL_ID, 0,
                                  req, sizeof(buff),
                                  NULL, &over);
     if (ret != NO_ERROR)
@@ -621,7 +633,6 @@ static VALUE server_wait(VALUE self, VALUE secs)
             return Qnil;
         }
     }
-    CloseHandle(over.hEvent);
     for (i = 0; i < HttpHeaderRequestMaximum; i++)
     {
         if (req->Headers.KnownHeaders[i].RawValueLength > 0)
@@ -707,6 +718,41 @@ static VALUE server_wait(VALUE self, VALUE secs)
     rb_ivar_set(resp, id_server_id, self);
     rb_ivar_set(resp, id_wrote_id, Qfalse);
     rb_ivar_set(resp, id_content_length_id, Qnil);
+    reqbody = Qnil;
+    if (!(req->Flags & HTTP_REQUEST_FLAG_MORE_ENTITY_BODY_EXISTS))
+    {
+        reqbody = rb_enc_str_new("", 0, rb_ascii8bit_encoding());
+    }
+    else if (req->Headers.KnownHeaders[HttpHeaderContentLength].RawValueLength > 0
+             && req->Headers.KnownHeaders[HttpHeaderContentLength].RawValueLength < 7)
+    {
+        char* buff;
+        int reqlen = atoi(req->Headers.KnownHeaders[HttpHeaderContentLength].pRawValue);
+        reqbody = rb_external_str_new_with_enc(NULL, reqlen, rb_ascii8bit_encoding());
+        buff = StringValuePtr(reqbody);
+        ResetEvent(over.hEvent);
+        ret = HttpReceiveRequestEntityBody(queue, req->RequestId,
+                                           HTTP_RECEIVE_REQUEST_ENTITY_BODY_FLAG_FILL_BUFFER,
+                                           buff, reqlen,
+                                           NULL, &over);
+        if (ret != NO_ERROR)
+        {
+            ret = wait_io(ret, &over, "HttpReceiveRequestEntityBody",
+                          GetTickCount64() + (ULONGLONG)to);
+            if (ret == WAIT_TIMEOUT)
+            {
+                CloseHandle(over.hEvent);
+                return Qnil;
+            }
+        }
+        *(buff + reqlen) = '\0';
+    }
+    CloseHandle(over.hEvent);
+    if (!NIL_P(reqbody))
+    {
+        rb_ivar_set(resp, id_input_id,
+                    rb_class_new_instance(1, &reqbody, stringio));
+    }
     rb_ary_push(result, resp);
     return result;
 }
@@ -858,6 +904,7 @@ void Init_ennou()
     id_server_id = rb_intern("@server");
     id_wrote_id = rb_intern("@wrote");
     id_content_length_id = rb_intern("@content_length");
+    id_input_id = rb_intern("@input");
     id_str_encode = rb_intern("encode");
     id_bytesize = rb_intern("bytesize");
     id_downcase = rb_intern("downcase");
@@ -877,7 +924,8 @@ void Init_ennou()
     ennou_io = rb_define_class_under(ennou, "EnnouIO", rb_cObject);
     rb_define_method(ennou_io, "initialize", no_initialize, -1);
     rb_define_method(ennou_io, "close", resp_close, 0);
-    rb_define_method(ennou_io, "disconnect", resp_disconnect, 0);    
+    rb_define_method(ennou_io, "disconnect", resp_disconnect, 0);
+    rb_define_method(ennou_io, "input", req_input, 0);
     rb_define_method(ennou_io, "status=", resp_status, 1);
     rb_define_method(ennou_io, "headers=", resp_headers, 1);
     rb_define_method(ennou_io, "body=", resp_body, 1);
@@ -901,6 +949,9 @@ void Init_ennou()
     DECLARE_PROPERTY(logging);
     DECLARE_PROPERTY(authentication);
     DECLARE_PROPERTY(channelbind);
+
+    rb_require("stringio");
+    stringio = rb_const_get(rb_cObject, rb_intern("StringIO"));
 }
 
 static void uninit_ennou(VALUE v)
