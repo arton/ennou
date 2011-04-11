@@ -46,6 +46,7 @@ static VALUE ennou_io;
 static VALUE server_class;
 static VALUE utf16_enc;
 static VALUE stringio;
+static VALUE tempfile;
 static VALUE EMPTY_STRING;
 
 static VALUE REQUEST_METHOD;
@@ -177,6 +178,10 @@ static ID id_content_length_id;
 static ID id_str_encode;
 static ID id_bytesize;
 static ID id_downcase;
+static ID id_encoding;
+static ID id_binmode;
+static ID id_open;
+static ID id_write;
 
 static HTTP_SERVER_SESSION_ID session_id;
 
@@ -470,14 +475,16 @@ static void resp_finish(VALUE self, bool disc)
     rb_ivar_set(self, id_wrote_id, Qnil);
 }
 
+#define BUFFSIZE 4096
+
 static VALUE req_input(VALUE self)
 {
     ennou_io_t* ennoup;
     OVERLAPPED over;
+    DWORD bytesRead;
     ULONG ret;
-    VALUE reqbody;
     HANDLE queue = (HANDLE)NUM2LL(rb_ivar_get(rb_ivar_get(self, id_server_id), id_handle_id));
-    VALUE input = rb_ivar_get(self, id_input_id);
+    volatile VALUE input = rb_ivar_get(self, id_input_id);
     if (input != Qnil) return input;
     memset(&over, 0, sizeof(over));
     over.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -485,10 +492,9 @@ static VALUE req_input(VALUE self)
     if (ennoup->requestContentLength)
     {
         char* buff;
-        DWORD bytesRead;
         size_t read;
         size_t len = ennoup->requestContentLength;
-        reqbody = rb_external_str_new_with_enc(NULL, len, rb_ascii8bit_encoding());
+        VALUE reqbody = rb_external_str_new_with_enc(NULL, len, rb_ascii8bit_encoding());
         buff = StringValuePtr(reqbody);
         for (read = 0; read < len;)
         {
@@ -523,24 +529,82 @@ static VALUE req_input(VALUE self)
     }
     else
     {
-        
+        VALUE args[2];
+        VALUE rbuff = rb_external_str_new_with_enc(NULL, BUFFSIZE, rb_ascii8bit_encoding());
+        char* buff = StringValuePtr(rbuff);
+        args[0] = rb_str_new("ennou", 5);
+        args[1] = rb_hash_new();
+        rb_hash_aset(args[1], ID2SYM(id_encoding), rb_enc_from_encoding(rb_ascii8bit_encoding()));
+        rb_ivar_set(self, id_input_id, 
+                    input = rb_class_new_instance(2, args, tempfile));
+        rb_funcall(input, id_binmode, 0);
+        for (;;)
+        {
+            rb_str_set_len(rbuff, BUFFSIZE);
+            ret = HttpReceiveRequestEntityBody(queue, ennoup->requestId,
+                                               0, 
+                                               buff, BUFFSIZE,
+                                               NULL, &over);
+            if (ret == ERROR_HANDLE_EOF) break;
+            if (ret != NO_ERROR)
+            {
+                ret = wait_io(ret, &over, "HttpReceiveRequestEntityBody", -1);
+                if (ret == WAIT_TIMEOUT)
+                {
+                    CloseHandle(over.hEvent);
+                    return Qnil;
+                }
+            }
+            if (!GetOverlappedResult(queue, &over, &bytesRead, FALSE))
+            {
+                CloseHandle(over.hEvent);                
+                rb_raise(rb_eSystemCallError, "retrieve request body (%d)",  GetLastError());
+            }
+            if (rb_str_strlen(rbuff) != bytesRead)
+            {
+                rb_str_set_len(rbuff, bytesRead);
+            }
+            rb_funcall(input, id_write, 1, rbuff);
+            ResetEvent(over.hEvent);
+        }
+        rb_funcall(input, id_open, 0);
     }
     CloseHandle(over.hEvent);
     return input;
 }
 
+/*
+ *  call-seq:
+ *    io.close
+ *
+ *    flush response. the connection may remain
+ *    if the connection header variable isn't set close.
+ */
 static VALUE resp_close(VALUE self)
 {
     resp_finish(self, false);
     return Qnil;
 }
 
+/*
+ *  call-seq:
+ *    io.disconnect
+ *
+ *    flush response and disconnect from client.
+ */
 static VALUE resp_disconnect(VALUE self)
 {
     resp_finish(self, true);    
     return Qnil;    
 }
 
+/*
+ *  call-seq:
+ *     io.lump(status, headers, body)
+ *
+ *  send response using status, headers and body.
+ *
+ */
 static VALUE resp_lump(VALUE self, VALUE stat, VALUE headers, VALUE body)
 {
     FIX2INT(stat); // check fixnum range
@@ -944,6 +1008,10 @@ void Init_ennou()
     id_str_encode = rb_intern("encode");
     id_bytesize = rb_intern("bytesize");
     id_downcase = rb_intern("downcase");
+    id_encoding = rb_intern("encoding");
+    id_binmode = rb_intern("binmode");
+    id_open = rb_intern("open");
+    id_write = rb_intern("write");
     utf16_enc = rb_const_get_from(rb_cEncoding, rb_intern("UTF_16LE"));
     
     rb_define_const(ennou, "VERSION", rb_str_new2(Ennou_VERSION));
@@ -988,6 +1056,8 @@ void Init_ennou()
 
     rb_require("stringio");
     stringio = rb_const_get(rb_cObject, rb_intern("StringIO"));
+    rb_require("tempfile");
+    tempfile = rb_const_get(rb_cObject, rb_intern("Tempfile"));
 }
 
 static void uninit_ennou(VALUE v)

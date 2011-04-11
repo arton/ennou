@@ -305,7 +305,9 @@ class TestServer < Test::Unit::TestCase
           end
         end
         env, io = s.wait(0.1)
-        assert_equal data, io.input.read
+        reqdata = io.input.read
+        assert_equal data, reqdata
+        assert Encoding::BINARY === reqdata.encoding        
         io.status = 200
         io.headers = { 'content-type' => "text/plain" }
         io.write 'hello'
@@ -318,7 +320,6 @@ class TestServer < Test::Unit::TestCase
   end
 
   def test_n_small_posts
-    data = 'a' * 99999
     Ennou::Server.open(QNAME) do |s|
       begin
         s.add 'http://+:80/test'
@@ -327,17 +328,18 @@ class TestServer < Test::Unit::TestCase
           loop do
             env, io = s.wait(0.5)
             Thread.start do
-              assert_equal data, io.input.read
-              io.lump 200, { 'content-type' => "text/plain" }, 'hello'
+              data = io.input.read
+              io.lump 200, { 'content-type' => "text/plain" }, data
             end
           end
         end
         a = []
-        10.times do 
+        'a'.upto('k') do |c|
           a << Thread.start do
             Net::HTTP.start('localhost') do |http|
+              data = c * 99999
               resp = http.post('/test/post', data)
-              assert_equal 'hello', resp.body
+              assert_equal data, resp.body
             end
           end
         end
@@ -347,6 +349,36 @@ class TestServer < Test::Unit::TestCase
         ts.kill
       rescue SystemCallError => e
         assert(/\(5\)/ =~ e.message)
+      end
+    end
+  end
+
+  def test_large_post
+    data = 'abc' * 444444
+    Ennou::Server.open(QNAME) do |s|
+      begin
+        s.add 'http://+:80/test/'
+        # by administrator
+        t = Thread.start do
+          Net::HTTP.start('localhost') do |http|
+            resp = http.post('/test/post', data)
+            assert_equal data, resp.body
+          end
+        end
+        env, io = s.wait(0.1)
+        reqdata = io.input.read
+        assert Tempfile === io.input
+        assert_equal data, reqdata
+        assert Encoding::BINARY === reqdata.encoding
+        
+        io.status = 200
+        io.headers = { 'content-type' => "text/plain" }
+        io.write data
+        io.close
+        t.join
+      rescue SystemCallError => e
+        p e
+        assert(e.message, /\(5\)/ =~ e.message)
       end
     end
   end
