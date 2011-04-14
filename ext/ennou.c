@@ -33,6 +33,8 @@
                                rb_define_module_function(ennou, #name, get_##name, 0)
 #define ASSIGN_STRING(name) name = rb_str_freeze(rb_str_new2(#name)); \
     rb_define_const(ennou, #name, name)
+#define ASSIGN_STRING2(name,value) name = rb_str_freeze(rb_str_new2(#value)); \
+    rb_define_const(ennou, #name, name)
 
 #define STRING_IO_MAX 100000;
 
@@ -64,6 +66,10 @@ static VALUE REMOTE_HOST;
 static VALUE REMOTE_IDENT;
 static VALUE REMOTE_USER;
 static VALUE SERVER_SOFTWARE;
+static VALUE URL_SCHEME;
+static VALUE HTTP;
+static VALUE HTTPS;
+
 static ID HTTP_RESPONSE_HEADER_IDS[HttpHeaderResponseMaximum];
 static const char* HTTP_RESPONSE_HEADER_STRS[] = {
     "cache-control",
@@ -744,6 +750,7 @@ static VALUE server_wait(VALUE self, VALUE secs)
             GetTickCount64() + (ULONGLONG)to);
         if (ret == WAIT_TIMEOUT)
         {
+            ret = CancelIo(queue);
             CloseHandle(over.hEvent);
             return Qnil;
         }
@@ -769,6 +776,7 @@ static VALUE server_wait(VALUE self, VALUE secs)
     sprintf(protobuff, "%s/%d.%d", "HTTP",
             req->Version.MajorVersion, req->Version.MinorVersion);
     rb_hash_aset(env, SERVER_PROTOCOL, rb_str_new2(protobuff));
+    rb_hash_aset(env, URL_SCHEME, (req->pSslInfo) ? HTTPS : HTTP);
     if (req->CookedUrl.HostLength)
     {
         char* chrp;
@@ -970,6 +978,9 @@ void Init_ennou()
     ASSIGN_STRING(REMOTE_IDENT);
     ASSIGN_STRING(REMOTE_USER);
     ASSIGN_STRING(SERVER_SOFTWARE);
+    ASSIGN_STRING(URL_SCHEME);
+    ASSIGN_STRING2(HTTPS, https);
+    ASSIGN_STRING2(HTTP, http);
 
     for (i = 0; i < HttpHeaderResponseMaximum; i++)
     {
