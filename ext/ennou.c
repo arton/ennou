@@ -367,9 +367,12 @@ static ULONG wait_io(VALUE self, ULONG stat, LPOVERLAPPED ov, const char* func, 
     {
         VALUE exc;
         DWORD dwError;
-        stat = rb_w32_wait_events(&ov->hEvent, 1, 0);
-        if (stat == WAIT_TIMEOUT) continue;
-        if (stat == WAIT_OBJECT_0) break;
+        if (!RTEST(rb_ivar_get(self, id_break_id)))
+        {
+            stat = rb_w32_wait_events(&ov->hEvent, 1, 0);
+            if (stat == WAIT_TIMEOUT) continue;
+            if (stat == WAIT_OBJECT_0) break;
+        }
         if (stat == WAIT_OBJECT_0 + 1 || RTEST(rb_ivar_get(self, id_break_id)))
         {
             dwError = WSAEINTR;
@@ -484,7 +487,7 @@ static void resp_finish(VALUE self, bool disc)
                                      0,
                                      &over,
                                      NULL);
-    if (ret != NO_ERROR)
+    if (ret != NO_ERROR && ret != ERROR_CONNECTION_INVALID)
     {
         wait_io(self, ret, &over, "HttpSendResponseEntityBody(close)", -1);
     }
