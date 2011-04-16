@@ -135,7 +135,7 @@ class TestServer < Test::Unit::TestCase
         io.close
         t.join
       rescue SystemCallError => e
-        assert(e.message, /\(5\)/ =~ e.message)
+        assert(/\(5\)/ =~ e.message, e.message)
       end
     end
   end
@@ -157,7 +157,7 @@ class TestServer < Test::Unit::TestCase
         io.close
         t.join
       rescue SystemCallError => e
-        assert(e.message, /\(5\)/ =~ e.message)
+        assert(/\(5\)/ =~ e.message, e.message)
       end
     end
   end
@@ -177,7 +177,7 @@ class TestServer < Test::Unit::TestCase
         io.close
         t.join
       rescue SystemCallError => e
-        assert(e.message, /\(5\)/ =~ e.message)
+        assert(/\(5\)/ =~ e.message, e.message)
       end
     end
   end
@@ -197,7 +197,7 @@ class TestServer < Test::Unit::TestCase
         io.disconnect
         t.join
       rescue SystemCallError => e
-        assert(e.message, /\(5\)/ =~ e.message)
+        assert(/\(5\)/ =~ e.message, e.message)
       end
     end
   end
@@ -314,7 +314,7 @@ class TestServer < Test::Unit::TestCase
         io.close
         t.join
       rescue SystemCallError => e
-        assert(e.message, /\(5\)/ =~ e.message)
+        assert(/\(5\)/ =~ e.message, e.message)
       end
     end
   end
@@ -377,8 +377,7 @@ class TestServer < Test::Unit::TestCase
         io.close
         t.join
       rescue SystemCallError => e
-        p e
-        assert(e.message, /\(5\)/ =~ e.message)
+        assert(/\(5\)/ =~ e.message, e.message)
       end
     end
   end
