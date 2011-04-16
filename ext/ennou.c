@@ -174,6 +174,7 @@ static const char* HTTP_VERB_STRS[] = {
 static ID id_group_id;
 static ID id_handle_id;
 static ID id_event_id;
+static ID id_break_id;
 static ID id_status_id;
 static ID id_headers_id;
 static ID id_body_id;
@@ -355,7 +356,7 @@ static void set_resp_headers(HTTP_RESPONSE* resp, VALUE headers)
     rb_hash_foreach(headers, each_resp_header, (VALUE)resp);
 }
 
-static ULONG wait_io(ULONG stat, LPOVERLAPPED ov, const char* func, ULONGLONG timeout)
+static ULONG wait_io(VALUE self, ULONG stat, LPOVERLAPPED ov, const char* func, ULONGLONG timeout)
 {
     if (stat != ERROR_IO_PENDING)
     {
@@ -364,13 +365,23 @@ static ULONG wait_io(ULONG stat, LPOVERLAPPED ov, const char* func, ULONGLONG ti
     }
     for (; timeout > GetTickCount64();)
     {
+        VALUE exc;
         DWORD dwError;
         stat = rb_w32_wait_events(&ov->hEvent, 1, 0);
         if (stat == WAIT_TIMEOUT) continue;
         if (stat == WAIT_OBJECT_0) break;
-        dwError = GetLastError();
+        if (stat == WAIT_OBJECT_0 + 1 || RTEST(rb_ivar_get(self, id_break_id)))
+        {
+            dwError = WSAEINTR;
+            exc = rb_eInterrupt;
+        }
+        else
+        {
+            dwError = GetLastError();
+            exc = rb_eSystemCallError;
+        }
         CloseHandle(ov->hEvent);
-        rb_raise(rb_eSystemCallError, "wait %s (%d)", func, dwError);
+        rb_raise(exc, "wait %s (%d)", func, dwError);
     }
     return stat;
 }
@@ -416,7 +427,7 @@ static void required_flush(VALUE self, VALUE stat, VALUE headers, VALUE body, bo
                                NULL);
     if (ret != NO_ERROR)
     {
-        ret = wait_io(ret, &over, "HttpSendHttpResponse", -1);
+        ret = wait_io(self, ret, &over, "HttpSendHttpResponse", -1);
     }
     CloseHandle(over.hEvent);
     if (!moredata)
@@ -475,7 +486,7 @@ static void resp_finish(VALUE self, bool disc)
                                      NULL);
     if (ret != NO_ERROR)
     {
-        wait_io(ret, &over, "HttpSendResponseEntityBody(close)", -1);
+        wait_io(self, ret, &over, "HttpSendResponseEntityBody(close)", -1);
     }
     CloseHandle(over.hEvent);
     rb_ivar_set(self, id_wrote_id, Qnil);
@@ -511,7 +522,7 @@ static VALUE req_input(VALUE self)
             if (ret == ERROR_HANDLE_EOF) break;
             if (ret != NO_ERROR)
             {
-                ret = wait_io(ret, &over, "HttpReceiveRequestEntityBody", -1);
+                ret = wait_io(self, ret, &over, "HttpReceiveRequestEntityBody", -1);
                 if (ret == WAIT_TIMEOUT)
                 {
                     CloseHandle(over.hEvent);
@@ -554,7 +565,7 @@ static VALUE req_input(VALUE self)
             if (ret == ERROR_HANDLE_EOF) break;
             if (ret != NO_ERROR)
             {
-                ret = wait_io(ret, &over, "HttpReceiveRequestEntityBody", -1);
+                ret = wait_io(self, ret, &over, "HttpReceiveRequestEntityBody", -1);
                 if (ret == WAIT_TIMEOUT)
                 {
                     CloseHandle(over.hEvent);
@@ -669,7 +680,7 @@ static VALUE resp_write_data(VALUE self, VALUE buff)
                                      NULL);
     if (ret != NO_ERROR)
     {
-        wait_io(ret, &over, "HttpSendResponseEntityBody", -1);
+        wait_io(self, ret, &over, "HttpSendResponseEntityBody", -1);
     }
     CloseHandle(over.hEvent);
     return Qnil;    
@@ -725,10 +736,16 @@ static VALUE server_remove(VALUE self, VALUE uri)
     return uri;
 }
 
+static VALUE server_break(VALUE self)
+{
+    rb_ivar_set(self, id_break_id, Qtrue);
+    return self;
+}
+
 static VALUE server_wait(VALUE self, VALUE secs)
 {
-    VALUE result, resp, reqbody, env = rb_hash_new();
     ennou_io_t* ennoup;
+    VALUE evt, result, resp, reqbody, env = rb_hash_new();
     HANDLE queue = (HANDLE)NUM2LL(rb_ivar_get(self, id_handle_id));
     BYTE buff[3000];
     char protobuff[64];
@@ -738,20 +755,29 @@ static VALUE server_wait(VALUE self, VALUE secs)
     PCSTR url;
     int i;
     double to = NUM2DBL(secs) * 1000;
+
     memset(&over, 0, sizeof(over));
-    over.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-    rb_ivar_set(self, id_event_id, LL2NUM((__int64)over.hEvent));
+    evt = rb_ivar_get(self, id_event_id);
+    if (NIL_P(evt))
+    {
+        over.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        rb_ivar_set(self, id_event_id, LL2NUM((__int64)over.hEvent));
+    }
+    else
+    {
+        over.hEvent = (HANDLE)NUM2LL(evt);
+        ResetEvent(over.hEvent);
+    }
     ret = HttpReceiveHttpRequest(queue, HTTP_NULL_ID, 0,
                                  req, sizeof(buff),
                                  NULL, &over);
     if (ret != NO_ERROR)
     {
-        ret = wait_io(ret, &over, "HttpReceiveHttpRequest",
-            GetTickCount64() + (ULONGLONG)to);
+        ret = wait_io(self, ret, &over, "HttpReceiveHttpRequest",
+                      GetTickCount64() + (ULONGLONG)to);
         if (ret == WAIT_TIMEOUT)
         {
             ret = CancelIo(queue);
-            CloseHandle(over.hEvent);
             return Qnil;
         }
     }
@@ -855,7 +881,6 @@ static VALUE server_wait(VALUE self, VALUE secs)
             ennoup->requestContentLength = 0;
         }
     }
-    CloseHandle(over.hEvent);
     if (!NIL_P(reqbody))
     {
         rb_ivar_set(resp, id_input_id,
@@ -867,9 +892,15 @@ static VALUE server_wait(VALUE self, VALUE secs)
 
 static VALUE server_close(VALUE self)
 {
+    ULONG ret;
     VALUE gid = rb_ivar_get(self, id_group_id);
     VALUE handle = rb_ivar_get(self, id_handle_id);
-    ULONG ret = HttpShutdownRequestQueue((HANDLE)NUM2LL(handle));
+    VALUE evt = rb_ivar_get(self, id_event_id);
+    if (!NIL_P(evt))
+    {
+        CloseHandle((HANDLE)NUM2LL(evt));
+    }
+    ret = HttpShutdownRequestQueue((HANDLE)NUM2LL(handle));
     if (ret != NO_ERROR)
     {
         rb_raise(rb_eSystemCallError, "call HttpShutdownRequestQueue %d", ret);
@@ -1009,6 +1040,7 @@ void Init_ennou()
     id_group_id = rb_intern("@group_id");
     id_handle_id = rb_intern("@handle");
     id_event_id = rb_intern("@event");
+    id_break_id = rb_intern("@break");
     id_status_id = rb_intern("@status");
     id_headers_id = rb_intern("@headers");
     id_body_id = rb_intern("@body");
@@ -1032,6 +1064,7 @@ void Init_ennou()
     rb_define_method(server_class, "initialize", server_initialize, -1);
     rb_define_method(server_class, "close", server_close, 0);
     rb_define_method(server_class, "wait", server_wait, 1);
+    rb_define_method(server_class, "break", server_break, 0);
     rb_define_method(server_class, "add", server_add, 1);
     rb_define_method(server_class, "remove", server_remove, 1);
     rb_mod_attr(1, &symgid, server_class);
