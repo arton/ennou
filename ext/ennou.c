@@ -180,8 +180,9 @@ static ID id_headers_id;
 static ID id_body_id;
 static ID id_server_id;
 static ID id_wrote_id;
-static ID id_input_id;
 static ID id_content_length_id;
+static ID id_input_id;
+static ID id_controller_id;
 static ID id_str_encode;
 static ID id_bytesize;
 static ID id_downcase;
@@ -507,8 +508,8 @@ static VALUE req_input(VALUE self)
     volatile VALUE input = rb_ivar_get(self, id_input_id);
     if (input != Qnil) return input;
     memset(&over, 0, sizeof(over));
-    over.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     Data_Get_Struct(self, ennou_io_t, ennoup);
+    over.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (ennoup->requestContentLength)
     {
         char* buff;
@@ -941,6 +942,7 @@ static VALUE server_initialize(int argc, VALUE* argv, VALUE svr)
         rb_raise(rb_eSystemCallError, "call HttpCreateUrlGroup %d", ret);
     }
     rb_ivar_set(svr, id_group_id, LL2NUM(gid));
+    rb_ivar_set(svr, id_controller_id, Qfalse);
     cqname = to_wchar(qname);
     if (RTEST(multi))
     {
@@ -948,6 +950,7 @@ static VALUE server_initialize(int argc, VALUE* argv, VALUE svr)
                                   HTTP_CREATE_REQUEST_QUEUE_FLAG_OPEN_EXISTING, &queue);
         if (ret != NO_ERROR)
         {
+            rb_ivar_set(svr, id_controller_id, Qtrue);
             ret = HttpCreateRequestQueue(httpapi_version, cqname, NULL,
                                       HTTP_CREATE_REQUEST_QUEUE_FLAG_CONTROLLER, &queue);
         }
@@ -971,6 +974,11 @@ static VALUE server_initialize(int argc, VALUE* argv, VALUE svr)
         rb_raise(rb_eSystemCallError, "Binding Queue %d", ret);
     }
     return svr;
+}
+
+static VALUE server_is_controller(VALUE self)
+{
+    return rb_ivar_get(self, id_controller_id);
 }
 
 static VALUE server_s_open(int argc, VALUE* argv, VALUE klass)
@@ -1051,6 +1059,7 @@ void Init_ennou()
     id_wrote_id = rb_intern("@wrote");
     id_content_length_id = rb_intern("@content_length");
     id_input_id = rb_intern("@input");
+    id_controller_id = rb_intern("@controller");
     id_str_encode = rb_intern("encode");
     id_bytesize = rb_intern("bytesize");
     id_downcase = rb_intern("downcase");
@@ -1065,6 +1074,7 @@ void Init_ennou()
     server_class = rb_define_class_under(ennou, "Server", rb_cObject);
     rb_define_singleton_method(server_class, "open", server_s_open, -1);
     rb_define_method(server_class, "initialize", server_initialize, -1);
+    rb_define_method(server_class, "controller?", server_is_controller, 0);
     rb_define_method(server_class, "close", server_close, 0);
     rb_define_method(server_class, "wait", server_wait, 1);
     rb_define_method(server_class, "break", server_break, 0);
