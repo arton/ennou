@@ -1,0 +1,184 @@
+<html>
+<head>
+ <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+ <meta http-equiv="Content-Style-Type" content="text/css/" />
+ <title>NouGakuDo</title>
+ <HTA:APPLICATION ID="nouGakuDoApp" 
+  SINGLEINSTANCE="yes"
+ />
+ <style type="text/css">
+div.console {
+  margin-top: 0%;
+}
+div.apps {
+  margin-top: 10%;
+}
+div.misc {
+  margin-bottom: 10%;
+}
+div.footer {
+  text-align: right;
+  margin-bottom: 0%;
+}
+ </style>
+ <script language="RubyScript.1.9">
+require 'ennou'
+require 'cgi'
+require 'tempfile'
+require 'suexec'
+require 'fileutils'
+
+WWIDTH = 600
+WHEIGHT = 400
+
+NUMBER_OF_PROCESSORS = ENV['NUMBER_OF_PROCESSORS'].to_i
+SETTINGS = 'nougakudo.conf'
+
+class Script
+  def initialize(script, path)
+    @script = script
+    @conf = path
+    @tempconf = nil
+  end
+  def script_path()
+    File::dirname(@conf)
+  end
+  def create_conf(numproc)
+    t = Tempfile.open('noug')
+    @tempconf = t.path + '.ru'
+    t.close(true)
+    File.open(@tempconf, 'w') do |fp|
+      File.open(@conf, 'r').each_line do |line|
+        if line =~ %r|/config/environment|
+          fp.puts "require '#{File.expand_path('../config/environment', @conf)}'"
+          fp.puts "Rack::Handler::Ennoumu.config :nprocs => #{numproc}"
+        else
+          fp.puts line
+        end
+      end.close
+    end
+    @tempconf
+  end
+
+  def to_html()
+<<EHTML
+<ul>
+  <li>#{@script}</li>
+  <li>#{CGI.escapeHTML(@conf)}</li>
+  <li>Environment <select id="e#{@script}">
+       <option value="development">development
+       <option value="production">production
+       <option value="test">test
+    </select>
+  <li><input type="checkbox" id="d#{@script}">set debugging flags</li>
+  <li><input type="checkbox" id="w#{@script}">set warnings flags</li>
+  <li><a href="http://localhost/#{@script}/">index</a></li>
+  <li># of processes: <select id="c#{@script}">#{create_options}</select></li>
+  <li><input type="button" id="run#{@script}" onclick="start_script('#{@script}')" 
+             value="Launch" langauge="RubyScript.1.9"></li>
+</ul>
+EHTML
+  end
+
+  def to_command_args(command_path, params)
+    cmd = ["-C#{command_path}"]
+    cmd << "#{command_path}\\rackup"
+    cmd << "-d" if params[:debug]
+    cmd << "-w" if params[:warn]
+    cmd << "-p 80"
+    cmd << "-E #{params[:env]}"
+    if params[:numproc] != '1'
+      cmd << "-s Ennoumu"
+      cmd << "#{create_conf params[:numproc]}"
+    else
+      cmd << "-s Ennou"
+      cmd << "#{@conf}"
+    end
+    cmd
+  end
+
+  def create_options()
+    1.upto(NUMBER_OF_PROCESSORS * 2).to_a.map {|i| "<option value=\"#{i}\">#{i}" }.join
+  end
+
+  attr_reader :conf
+end
+
+@scripts = {}
+
+def init()
+  resizeTo WWIDTH, WHEIGHT
+  document.getElementById("ennou-version").innerHTML = "Ennou #{Ennou::VERSION}"
+  document.getElementById("ruby-version").innerHTML = RUBY_DESCRIPTION
+end
+
+def add_script(script, conffile)
+  if @scripts.include? script
+    alert("#{script} was already loaded")
+    return
+  end
+begin
+
+  @scripts[script] = Script.new(script, conffile)
+  row = document.createElement('div')
+  row.innerHTML = @scripts[script].to_html
+  document.getElementById('apps').appendChild row
+rescue => e
+  alert(e.message)
+  alert(e.backtrace.join('/'))
+end
+end
+
+def select_ru()
+  file = document.getElementById('ru').value
+  if /^run\s+([^:]+)/ =~ IO::read(file)
+    add_script $1.downcase, file
+  else
+    alert 'select config.ru'
+  end
+end
+
+def start_script(script)
+  /^\s*(?:"([^"]+)|([^ ]+))/ =~ document.getElementById("nouGakuDoApp").commandLine
+  path = File::dirname($1 || $2)
+  args = @scripts[script].to_command_args path, 
+    :debug => document.getElementById("d#{script}").checked,
+    :warn => document.getElementById("w#{script}").checked,
+    :numproc => document.getElementById("c#{script}").value,
+    :env => document.getElementById("e#{script}").value
+  if $DEBUG
+    document.getElementById("commandline").innerHTML = CGI.escapeHTML("#{path}\\ruby.exe #{args.join(' ')}")
+    document.getElementById("configpath").innerHTML = CGI.escapeHTML(args.last)
+  end
+  SuExec.exec "#{path}\\ruby.exe", args
+end
+
+def save_settings()
+  
+end
+
+def cleanup()
+  FileUtils.rm(Dir.glob("#{Dir.tmpdir}/noug*.ru"), force:true)
+end
+ </script>
+</head>
+<body onload="init()" onunload="cleanup()">
+ <div class="console">
+  select your config.ru: 
+  <input type="file" id="ru" value="select ru" onpropertychange="select_ru" language="RubyScript.1.9">
+ </div>
+ <div id="apps">
+ </div>
+ <div class="misc">
+   <input type="button" id="save" value="save config" onclick="save_settings" langauge="RubyScript.1.9">
+ </div>
+ <div id="message">
+  <div id="commandline"></div>
+  <div id="configpath"></div>
+ </div>
+ <div id="footer" class="footer">
+  <div id="ennou-version"></div>
+  <div id="ruby-version"></div>
+ </div>
+</body>
+</html>
