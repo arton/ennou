@@ -9,21 +9,25 @@ module Rack
     class Ennou
 
       QNAME = 'Ennou_Queue'
-
-      def self.run(app, options = {})
+      
+      def self.setup(options)
         @logger = options[:Logger] || ::WEBrick::Log::new
-        script = ''
+        @script = ''
         if options[:config]
           if /^run\s+([^:]+)/ =~ IO::read(options[:config])
-            script = $1.downcase
+            @script = $1.downcase
           end
         end
-        port = options[:Port] || '80'
-        host = (options[:Host] == '0.0.0.0') ? '+' : options[:Host]
+        @port = options[:Port] || '80'
+        @host = (options[:Host] == '0.0.0.0') ? '+' : options[:Host]
+      end
+
+      def self.run(app, options = {})
+        setup(options)
         ::Ennou::Server.open(QNAME) do |server|
           @server = server
-          server.add "http://#{host}:#{port}/#{script}"
-          @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{host}:#{port}/#{script}"
+          server.add "http://#{@host}:#{@port}/#{@script}"
+          @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{@host}:#{@port}/#{@script}"
           loop do
             begin
               r = server.wait(60)
@@ -33,7 +37,7 @@ module Rack
               break
             end
           end
-          @logger.info "Ennou(#{::Ennou::VERSION}) stop service for http://#{host}:#{port}/#{script}"
+          @logger.info "Ennou(#{::Ennou::VERSION}) stop service for http://#{@host}:#{@port}/#{@script}"
         end
       end   
 

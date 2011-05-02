@@ -1,15 +1,14 @@
 # coding: utf-8
 
-require 'ennou.so'
-require 'webrick/log'
-require 'thread'
+require_relative './ennou.rb'
 
 module Rack
   module Handler
-    class Ennoumu
+    class Ennoumu < Ennou
 
       @qname = 'EnnouMu_Queue'
       @nprocs = 2
+      @rackup = 'rackup'
 
       def self.config(options)
         set_option(:@qname, options[:qname])
@@ -21,24 +20,17 @@ module Rack
       end
         
       def self.run(app, options = {})
-        @logger = options[:Logger] || ::WEBrick::Log::new
-        script = ''
-        if options[:config]
-          if /^run\s+([^:]+)/ =~ IO::read(options[:config])
-            script = $1.downcase
-          end
-        end
-        port = options[:Port] || '80'
-        host = (options[:Host] == '0.0.0.0') ? '+' : options[:Host]
+        setup(options)
         ::Ennou::Server.open(@qname, true) do |server|
           @server = server
           if server.controller?
             @stoprun = false
-            @logger.info "Ennou(#{::Ennou::VERSION}) controller pid=#{$$} start"
-            server.add "http://#{host}:#{port}/#{script}"
+            @logger.info "Ennou(#{::Ennou::VERSION}) controller pid=#{$$} start on #{RUBY_VERSION}(#{RUBY_PLATFORM})"
+            server.add "http://#{@host}:#{@port}/#{@script}"
             pids = []
+            cmd = "#{::File.expand_path('../ruby.exe', $0)} #{::File.expand_path("../#{@rackup}", $0)} #{$DEBUG ? '-d' : ''} #{$VERBOSE ? '-w' : ''} -s Ennoumu \"#{options[:config]}\""
             1.upto(@nprocs) do
-              pids << spawn('rackup -s Ennoumu', )
+              pids << spawn(cmd)
               @logger.info " spawn worker pid=#{pids.last}"
             end
             until @stoprun do
@@ -46,7 +38,7 @@ module Rack
             end  
             @logger.info "Ennou(#{::Ennou::VERSION}) controller pid=#{$$} stop"
           else
-            @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{host}:#{port}/#{script} pid=#{$$}"
+            @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{@host}:#{@port}/#{@script} pid=#{$$}"
             loop do
               begin
                 r = server.wait(60)
@@ -56,7 +48,7 @@ module Rack
                 break
               end
             end
-            @logger.info "Ennou(#{::Ennou::VERSION}) stop service for http://#{host}:#{port}/#{script} pid=#{$$}"
+            @logger.info "Ennou(#{::Ennou::VERSION}) stop service for http://#{@host}:#{@port}/#{@script} pid=#{$$}"
           end
         end
       end   
@@ -72,31 +64,6 @@ module Rack
       
       private
       
-      def self.run_thread(app, env, io)
-        Thread.start do
-          env.update({'rack.version' => Rack::VERSION,
-                       'rack.input' => io.input,
-                       'rack.errors' => $stderr,
-                       'rack.multithread' => true,
-                       'rack.multiprocess' => false,
-                       'rack.run_once' => false,
-                       'rack.url_scheme' => env['URL_SCHEME']
-                     })
-          status, headers, body = app.call(env)
-          begin
-            io.status = status
-            io.headers = headers
-            body.each do |str|
-              io.write str
-            end
-            io.close
-          rescue
-            p $! if $debug
-          ensure
-            body.close if body.respond_to? :close
-          end
-        end
-      end
     end
   end    
 end
