@@ -1,0 +1,238 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html> <head>
+ <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+ <meta http-equiv="Content-Style-Type" content="text/css/" />
+<title>NougakuDo Manual</title>
+<style type="text/css">
+div.butai {
+  float: left;
+}
+div.cont {
+  
+}
+div.footer {
+  clear: left;
+  text-align: right;
+}
+h1 {
+  text-align: center;
+}
+h2 {
+  clear: right;
+  margin-left: 3%;
+}
+h3 {
+  clear: right;
+  margin-left: 3%;
+}
+ul {
+  margin-left: 6%;
+}
+li {
+  margin-bottom: 5px
+}
+img.left {
+  float: left;
+}
+img {
+  float: right;
+}
+p {
+  margin-left: 5%;
+  margin-right: 5%;
+  line-height: 120%;
+}
+p.lead {
+  margin-left: 25%;
+  margin-right: 25%;
+  line-height: 130%;
+}
+</style>
+</head>
+
+<body>
+<h1>能楽堂</h1>
+<p class="lead">
+64ビットWindows用のRails環境NougakuDo（能楽堂）を作ったのでリリースします。私が配布しているASRやRuby-1.9.2でRailsを利用するのであれば、こちらを利用した方が、あらゆる点（インストールの簡便さ、実行速度、利用可能なメモリ量＝スレッド数）でお得です。<br/>
+特に、Windowsの特徴であるHttp.sysの機能を相当引き出しているつもりなので、Windows用実行環境としては、マルチプロセスでの実行の簡単さや、速度面では最も優れていると思います。
+</p>
+<h2>特徴</h2>
+<p>
+能楽堂には以下の特徴があります。
+</p>
+<ul>
+<li>Ruby 1.9.3 （開発バージョン）をVisual Studio 2010 X64 でビルド。</li>
+<li>あらかじめ、Rails 3.0.7 を同梱。</li>
+<li>libyaml, gzip などは64ビットライブラリを同梱</li>
+<li>ruby-sqlite3 はX64用にビルドしたsqlite3と静的にリンク （testスクリプトの実行しか確認していません）</li>
+<li>超高速なWebサーバ Ennou（https://github.com/arton/ennou）を同梱（<a href="#ennou">後述</a>）</li>
+<li>マルチプロセスサーバを簡単に起動するためのローンチャ（NougakuDo）を同梱</li>
+<li>ライセンスは、Ennouを除きRubyに合わせて<a href="http://www.opensource.org/licenses/bsd-license.php">第3条項抜きのBSDL</a>とします。<br/>また、同梱のGemやDLLはそれぞれのライセンスに従います。なお、能楽堂関係の画像はWikipediaのpublic domainのものです。</li>
+</ul>
+</p>
+<p>
+つまり、WindowsでのRailsの開発、実行を1つのパッケージでまかなうことを目的とした簡単導入ツールです。
+</p>
+
+<h2>サポートプラットフォーム</h2>
+<p>
+条件は、X64版Windowsであることと、HTTP API 2.0をサポートしていることです。
+</p>
+<ul>
+<li>Windows 7 （X64）： テストは、この環境（SP1）で、行っています。</li>
+<li>Windows Server 2008 R2：理屈の上では稼働可能です。</li>
+</ul>
+
+<a name="ennou">
+<h2><a href="https://github.com/arton/ennou">Ennou（演能）</a></h2>
+<p>
+Ennouは、WindowsのHTTP.SYSを利用することで、複数のプロセスに同一HTTPポートを割り当てることと、HTTPのプロトコルをサービスに実行させることで、複数プロセスへのリクエスト割り当てによる並行性の向上と、プロトコル解析のオーバーヘッドの低減を狙った<a href="http://rack.rubyforge.org">Rack</a>用Webサーバ（HTTP.SYSラッパー）です。
+</p>
+<p>
+どのくらい高速かというと、1プロセスでWEBrickの20倍以上、3プロセスで50倍程度です。単なるindex.htmlの応答であればRailsを通しても秒あたり1プロセスで600リクエスト程度は処理しました（このへんはネットワークの太さやマシンスペックに依存するので目安ということで）。ただし、各プロセス、最初のリクエストはRailsの初期化が走るからだと思いますが、普通に時間がかかります。
+</p>
+<p>
+本プログラムは、<a href="http://www.gnu.org/licenses/lgpl.html">LGPL</a>なので、再配布などは完全に自由ですが、ソースを修正した場合は公開してください。
+</p>
+
+<h2>インストール方法</h2>
+<img src="pics/msi.png" alt="install window" width="250" height="200"/>
+<p>
+インストールは、<a href="http://www.artonx.org/data/nougakudo/">http://www.artonx.org/data/nougakudo/</a>から、NougakuDo1.0.0 のリンクを利用してダウンロード、実行してください。
+</p>
+<p>
+実行すると、選択項目はなく、「Next」のクリックで終了します。
+</p>
+
+<h3>インストール先</h3>
+<p>
+インストーラは自動的にユーザのRoamingディレクトリへインストールします。
+</p>
+<p>
+このディレクトリは通常、<code>\Users\ユーザ名\AppData\Roaming</code>です。ユーザ自身の所有ディレクトリなので、ユーザは書き込み権限を持ちます。このため、Gemを利用したインストールなどは問題なく実行できます。
+</p>
+<p>
+ただし、うかつにファイルを削除するとMSIの監視機能により再インストールが走るので注意してください。
+</p>
+
+<h2>使い方</h2>
+<img src="pics/startmenu.png" alt="start menu" />
+<p>
+インストールすると、スタートメニューに、以下の3つのアイコンが登録されます。
+</p>
+<ul>
+<li>Prompt − RubyへPATHを通して、Roamingディレクトリを開きます。<br/>
+    RailsアプリケーションはRoamingディレクトリへ作成するのが良いでしょう。</li>
+<li>irb − irbです。</li>
+<li>NougakuDo − Railsアプリケーションを起動するツールです。</li>
+</ul>
+
+<h3>NougakuDoの使い方</h3>
+<img class="left" src="pics/nougakudo.png" alt="nougakudo" width="200" heigth="130"/>
+<p>
+NougakuDoアイコンを実行すると、最初に管理者権限への昇格を求められます。
+</p>
+<p>
+これは、HTTP.SYSを利用するのに管理者権限が必要だからです（※）。
+</p>
+ <ul>
+ <li>※）管理者権限ということで、何をしているか気になるようでしたら、roaming\nougakudo\binのnougakudo.htaを読んでください。HTML＋Rubyの小さなプログラムなので実行内容は明解だと思います。</li>
+ </ul>
+<p>
+次に、HTMLアプリケーションが動き出します。「select your config.ru:」に対して、RailsアプリケーションのRack設定ファイル（通常、<code>config.ru</code>）を指定してください。
+</p>
+<img class="left" src="pics/selected.png" alt="nougakudo" width="200" heigth="130"/>
+<p>
+Rack設定ファイルが選択されると、NougakuDoは指定されたファイルを読み込んでアプリケーション名などの実行に必要な情報を取得します。
+</p>
+<p>
+NougakuDoは情報を確認すると、次に実行に必要なパラメータをリスト表示します。
+</p>
+<p>
+Railsアプリケーションを起動するには、デバッグの有無などのオプションやプロセス数を設定してから、Launchボタンをクリックします。
+</p>
+<p>
+なお、アプリケーションのURIは、<code>http://ホスト名:80/アプリケーション名/ </code>となります。
+</p>
+<p>
+能楽堂は、仮想ホスト名ではなく、トップディレクトリでアプリケーションを分けることを本則とします。このとき、アプリケーション名には、Railsコマンドで作成したアプリケーション名が利用されます。これは、Config.ruのrunコマンドから読み取ります。
+</p>
+<img src="pics/running.png" width="252" heigth="193"/>
+<p>
+Launchボタンをクリックして起動に成功すると、黒いコマンドプロンプトが表示されます。
+</p>
+<p> 
+NougakuDoから実行したRailsアプリケーションは、1プロセスの場合も、複数プロセスの場合も、1つのコンソールを共用します。
+</p>
+<p>
+アプリケーションを終了するには、Ctrl-Cを打ち込んでください。
+ </p>
+ <p>
+なお、同時に同一アプリケーションを複数起動することはできません。HTTP.SYSによってURI競合としてエラーとなります。
+</p>
+<p>
+異なるアプリケーションを起動することは可能ですが、能楽堂 1.0.0 ではサポートしていません。この機能は、1.1以降でサポートする予定です。
+</p> 
+
+<h3>能楽堂を利用しない実行</h3>
+<p>
+NougakuDoを利用せずに、演能をWebサーバとしてRailsアプリケーションを実行するには、スタートメニューでPromptを右クリックしてコンテキストメニューを表示し、『管理者として実行』を選択して管理者権限で実行してください。WEBrickを利用する場合は管理者権限は不要です。 
+</p>
+<p>
+次に、開いたコマンドプロンプトで、 <code>rackup</code>を利用します。
+</p>
+<p>
+ 最初にcdコマンドを利用してアプリケーションのルートディレクトリへ入り、次に、<code>rackup</code>を実行します。
+</p>
+<p>
+この時、 演能を利用する場合は、
+</p>
+<ul> 
+<li> rackup -s Ennou   # シングルプロセス </li>
+<li> rackup -s Ennoumu # マルチプロセス </li>
+</ul>
+<p>
+と入力します。
+</p>
+<p>
+マルチプロセスの場合、プロセス数の指定はconfig.ruで行います。
+</p>
+<p>
+指定方法は、config.ruの<code>run</code>メソッド呼び出しの直前の行で、
+</p>
+<pre>
+Rack::Handler::Ennoumu.config :nprocs => 4 # 既定は2 。この例では4
+</pre>
+<p>
+のようにEnnoumu（マルチプロセス版演能のクラス名です）のconfigメソッドにハッシュで与えます。
+</p>
+
+<h2>問題点（あるいは制限事項）</h2>
+<p>
+現在の演能の実装は、HTTP.SYSの呼び出しとRubyのスレッドの切り替えに、ポールを利用します。このため、極めて短い間隔でIOコンプリーションチェックのためのループを行います。
+</p>
+<p>
+これによって、CPUは常に利用されている状態となります(大体1プロセスでアイドル時でも5%くらい)。つまり、環境には優しくありません。
+</p>
+<p>
+また、ポールの都度スレッド切り替えを行いますが、GVLを解除せずに同期的に外部リソース（RDBなど）を呼び出すとそのプロセスは止まります。
+</p>
+<p>
+このような外部リソースを利用するアプリケーションはプロセス数を増やして実行してください。気が向いたら、GVLを解除しながら実行するOLEDBプロバイダ呼び出しライブラリを作るかも知れません。
+</p>
+
+<h2>その他</h2>
+<p>
+Ennouに関する質問や要望、バグ報告については <a href="https://github.com/arton/ennou">https://github.com/arton/ennou</a>のIssuesを利用してください。
+</p>
+<p>
+その他のことについては、rails ML(rails@ruby.ml.fdiary.net)で質問してください。能楽堂に対する質問のつもり
+でも、実際はRailsについての質問という可能性があるからです。また、1人が持つ疑問は30人が持つものです。できるだけ知識を共有するためにも、MLを利用してください。
+</p>
+
+<div class="footer"> 
+<hr>
+<address></address>
+<!-- hhmts start --> Last modified: Tue May 03 03:19:44 +0900 2011 <!-- hhmts end -->
+</div>
+</body> </html>
