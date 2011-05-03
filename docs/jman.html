@@ -37,10 +37,19 @@ img.left {
 img {
   float: right;
 }
+a.amazon {
+  float: left;
+}
+img.amazon {
+  float: left;
+}
 p {
   margin-left: 5%;
   margin-right: 5%;
   line-height: 120%;
+}
+p.amazon {
+  clear: left;
 }
 p.lead {
   margin-left: 25%;
@@ -65,7 +74,7 @@ p.lead {
 <li>あらかじめ、Rails 3.0.7 を同梱。</li>
 <li>libyaml, gzip などは64ビットライブラリを同梱</li>
 <li>ruby-sqlite3 はX64用にビルドしたsqlite3と静的にリンク （testスクリプトの実行しか確認していません）</li>
-<li>超高速なWebサーバ Ennou（https://github.com/arton/ennou）を同梱（<a href="#ennou">後述</a>）</li>
+<li>超高速なWebサーバ Ennou（<a href="https://github.com/arton/ennou">https://github.com/arton/ennou</a>）を同梱（<a href="#ennou">後述</a>）</li>
 <li>マルチプロセスサーバを簡単に起動するためのローンチャ（NougakuDo）を同梱</li>
 <li>ライセンスは、Ennouを除きRubyに合わせて<a href="http://www.opensource.org/licenses/bsd-license.php">第3条項抜きのBSDL</a>とします。<br/>また、同梱のGemやDLLはそれぞれのライセンスに従います。なお、能楽堂関係の画像はWikipediaのpublic domainのものです。</li>
 </ul>
@@ -86,7 +95,7 @@ p.lead {
 <a name="ennou">
 <h2><a href="https://github.com/arton/ennou">Ennou（演能）</a></h2>
 <p>
-Ennouは、WindowsのHTTP.SYSを利用することで、複数のプロセスに同一HTTPポートを割り当てることと、HTTPのプロトコルをサービスに実行させることで、複数プロセスへのリクエスト割り当てによる並行性の向上と、プロトコル解析のオーバーヘッドの低減を狙った<a href="http://rack.rubyforge.org">Rack</a>用Webサーバ（HTTP.SYSラッパー）です。
+Ennouは、WindowsのHTTP.SYSを利用することで、複数のプロセスに同一HTTPポートを割り当てることと、HTTPのプロトコル処理をサービスに実行させることで、複数プロセスへのリクエスト割り当てによる並行性の向上と、プロトコル解析のオーバーヘッドの低減を狙った<a href="http://rack.rubyforge.org">Rack</a>用Webサーバ（HTTP.SYSラッパー）です。
 </p>
 <p>
 どのくらい高速かというと、1プロセスでWEBrickの20倍以上、3プロセスで50倍程度です。単なるindex.htmlの応答であればRailsを通しても秒あたり1プロセスで600リクエスト程度は処理しました（このへんはネットワークの太さやマシンスペックに依存するので目安ということで）。ただし、各プロセス、最初のリクエストはRailsの初期化が走るからだと思いますが、普通に時間がかかります。
@@ -229,10 +238,17 @@ Ennouに関する質問や要望、バグ報告については <a href="https://
 その他のことについては、rails ML(rails@ruby.ml.fdiary.net)で質問してください。能楽堂に対する質問のつもり
 でも、実際はRailsについての質問という可能性があるからです。また、1人が持つ疑問は30人が持つものです。できるだけ知識を共有するためにも、MLを利用してください。
 </p>
-
+<p>
+<h2>参考書</h2>
+<a class="amazon" href="http://www.amazon.co.jp/WEB-DB-PRESS-Vol-58-%E7%B7%A8/dp/4774143243%3FSubscriptionId%3D1PE38HKS6CPYCN0NM382%26tag%3Dleclatdesjour-22%26linkCode%3Dxm2%26camp%3D2025%26creative%3D165953%26creativeASIN%3D4774143243"><img class="amazon" src="http://ecx.images-amazon.com/images/I/51Zl31eqjML._SL160_.jpg"
+height="160" width="112" alt=""> 
+WEB+DB PRESS Vol.58(編/WEB+DB PRESS編集部)</a>
+<p class="amazon">
+Rails3はまずここから。
+</p> 
 <div class="footer"> 
 <hr>
 <address></address>
-<!-- hhmts start --> Last modified: Tue May 03 03:19:44 +0900 2011 <!-- hhmts end -->
+<!-- hhmts start --> Last modified: Tue May 03 18:28:54 +0900 2011 <!-- hhmts end -->
 </div>
 </body> </html>

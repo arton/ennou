@@ -1,0 +1,243 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html> <head>
+ <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+ <meta http-equiv="Content-Style-Type" content="text/css/" />
+<title>NougakuDo Manual</title>
+<style type="text/css">
+div.butai {
+  float: left;
+}
+div.cont {
+  
+}
+div.footer {
+  clear: left;
+  text-align: right;
+}
+h1 {
+  text-align: center;
+}
+h2 {
+  clear: right;
+  margin-left: 3%;
+}
+h3 {
+  clear: right;
+  margin-left: 3%;
+}
+ul {
+  margin-left: 6%;
+}
+li {
+  margin-bottom: 5px
+}
+img.left {
+  float: left;
+}
+img {
+  float: right;
+}
+a.amazon {
+  float: left;
+}
+img.amazon {
+  float: left;
+}
+p {
+  margin-left: 5%;
+  margin-right: 5%;
+  line-height: 120%;
+}
+pre {
+  margin-left: 6%;
+}
+p.amazon {
+  clear: left;
+}
+p.lead {
+  margin-left: 25%;
+  margin-right: 25%;
+  line-height: 130%;
+}
+</style>
+</head>
+
+<body>
+<h1>NougakuDo</h1>
+<p class="lead">
+I've just done and released Rails environment for x64 Windows NogakuDo (能楽堂 in Japanese letters). This distribution is very effective in Windows for ease of installation, speed of execution and memory usage as available threads.<br/>
+In particular, because of calling Http.sys directory in bundled server, NogakuDo is best solution for Rails on Windows.
+</p>
+<p>
+<a href="index.html">Download from here.</a>
+</p>
+<h2>Features</h2>
+<p>
+NogakuDo is characterized by the following.
+</p>
+<ul>
+<li>Ruby 1.9.3 （edge）building with Visual Studio 2010 X64.</li>
+<li>Rails 3.0.7 is ready to run.</li>
+<li>libyaml, gzip such as 64-bit libraries are also bundled.</li>
+<li>ruby-sqlite3 is also included with x64 built sqlite3 static library. (but not well tested)</li>
+<li>Ultra-fast Web server Ennou (<a href="https://github.com/arton/ennou">https://github.com/arton/ennou</a>) bundled (<a href="#ennou">see below</a>)</li>
+<li>Launcher to easily start multi processes server (NougakuDo) bundled.</li>
+<li>The licence is accoding to Ruby's <a href="http://www.opensource.org/licenses/bsd-license.php">2 clauses BSDL</a>, except for Ennou.<br/>The Gems and the included DLLs are subject to their licenses. The Noh related images are of Wikipedia's public domain.</li>
+</ul>
+</p>
+<p>
+In other words, NougakuDo is very useful for developing applications for Rails on Windows and the execution platform into just one package.
+</p>
+
+<h2>Supported Platforms</h2>
+<p>
+Require X64 version of Windows that supports HTTP API 2.0.
+</p>
+<ul>
+<li>Windows 7 (X64) : I tested on it (sp1).</li>
+<li>Windows Server 2008 R2: In theory it is possible run.</li>
+</ul>
+
+<a name="ennou">
+<h2><a href="https://github.com/arton/ennou">Ennou（演能 in Japanese letters）</a></h2>
+<p>
+Ennou - a <a href="http://rack.rubyforge.org">Rack</a> handler - directly interfaces with Http 2.0 API, it makes possible to multiple processes share the same HTTP port and protocol processing by the service.It improves concurrently requests processing and reduces the overhead of protocol analysis.
+</p>
+<p>
+It processes more than 20 times faster than WEBrick with one process, and 50 times faster than with three processes. The per a second ability for simple requests - index.html through Rails - about 600 requests with one process. <br/>In spite of above values depends on the machine specification and the bandwidh of the network, I believe Ennou is the best server for Windows.<br/> However the first request for each process is not so fast, the initialization cost for Rails is not so different than other handlers.
+</p>
+<p>
+This program is licensed with <a href="http://www.gnu.org/licenses/lgpl.html">LGPL</a>.So you can freely run, use and redistribute. But if you modify the source, should disclose.
+</p>
+
+<h2>How to install</h2>
+<img src="pics/msi.png" alt="install window" width="250" height="200"/>
+<p>
+You may download NougakuDo from <a href="http://www.artonx.org/data/nougakudo/">http://www.artonx.org/data/nougakudo/</a> using the link. The package is MSI, so the installation process is Windows standard.
+</p>
+<p>
+When you run it, without any query, only require to click some 'Next'.
+</p>
+
+<h3>the install folder</h3>
+<p>
+The installer automatically put files under your Roaming directory.
+</p>
+<p>
+Typically, Roaming directory is named \Users\<it>user name</it>\AppData\Roaming. Since your own ownership of the directory, you have write permission. So you can install and update gems later as you like.
+</p>
+<p>
+However, if you inadvertently delete a file in the installation set, MSI automatically detects it and force to reinstall it. This makes some irrits, so please be careful to delete existing files.
+</p>
+
+<h2>How to Use</h2>
+<img src="pics/startmenu.png" alt="start menu" />
+<p>
+Once installed, the Start Menu shows following three icons under NougakuDo folder.
+</p>
+<ul>
+<li>prompt - The command prompt window with putting ruby and useful batch files into PATH and opens the Roaming directory. <br/>
+    I recommand you to create Rails applications under Romaing directory.</li>
+<li>irb - This is Irb command prompt window.</li>
+<li>NougakuDo - the launcher for Rails applications.</li>
+</ul>
+
+<h3>Using NougakuDo</h3>
+<img class="left" src="pics/nougakudo.png" alt="nougakudo" width="200" heigth="130"/>
+<p>
+When you select NougakuDo icon from your Start menu, it will be asked to promotion of the administrator.
+</p>
+<p>
+Calling HTTP API (means interract with Http.sys) requires administrator's rights, so the launcher is also requires the rights.
+</p>
+<p>
+Then, HTML applicaiton will start to run. On the window's upper side, you'll see the "select your config.ru" message for choosing Rails Rack application's configuration file (usually named config.ru on your Rails application's root directory).</p>
+<img class="left" src="pics/selected.png" alt="nougakudo" width="200" heigth="130"/>
+<p>
+After specifying your <code>config.ru</code>, NougakuDo will get the information required to run applications from the file.
+</p>
+<p>
+When verifying configu.ru was completed, NougakuDo shows the parameter list on the window.
+</p>
+<p>
+To start Rails application, set options such as debug and the number of processes, then click 'Launch' button.
+</p>
+<p>
+The application's URI is <code>http://<it>host-name</it>:80/<it>application name</it>/</code>.
+</p>
+<p>
+NogakuDo prefers the root application name to separate them, not with the virtual host name. In this case, the application name is the name that specified by the Rails new command, and the name to specified in the config.ru.
+</p>
+<img src="pics/running.png" width="252" heigth="193"/>
+<p>
+After successful launching the application, a black command prompt will appear.
+</p>
+<p> 
+The Rails application that was launched from NogakuDo, even if multiple processes, share a single console.
+</p>
+<p>
+To stop the execution, you should hit Ctrl-C in that command prompt window.
+ </p>
+ <p>
+It restricts to start an application multiple at same time (it's not an application run with multi processes), because Http.sys detects URI confliction.
+</p>
+<p>
+To start different applications are possible, but it's not supported by NougakuDo 1.0.x. The feature will be supported in 1.1.0 or later.
+</p> 
+
+<h3>How to run Rails app without NougakuDo</h3>
+<p>
+Without using NougakuDo, you may use Ennou as usual command input style from a command prompt in NougakuDo Start menu. At first, with mouse, point prompt in NougakuDo folder on Start menu, just right click and select "Run as Administrator" on the context menu. If you use WEBrick, this process is not required because Ennou (http.sys) only requires Administrator's privileges.
+</p>
+<p>
+Next, open a command prompt and rackup your application.
+</p>
+<p>
+First, cd into the root directory of the application, then run <code>rackup</code>.
+</p>
+<p>
+</p>
+<p>
+At this time, when using Ennou, enter
+</p>
+<ul> 
+<li> rackup -s Ennou   # single process</li>
+<li> rackup -s Ennoumu # multi processes </li>
+</ul>
+<p>
+on the prompt.
+</p>
+<p>
+For multi-process, specifying the number of processes with config.ru.
+</p>
+<p>
+In config.ru, just above <code>run</code> line,
+</p>
+<pre>
+Rack::Handler::Ennoumu.config :nprocs => 4 # default is 2 processes, in this example 4 processes
+</pre>
+<p>
+put the number of processes for <code>Rack::Handler::Ennoumu</colde> config class method.
+</p>
+
+<h2>Issues and limitations</h2>
+<p>
+The current implementation of Ennou, is makes polling to change http.sys and ruby's thread switch. Thus, in a very short distance it makes a loop for IO completion check.
+</p>
+<p>
+This causes very aggressive CPU usage (even at 5% usage when idling).
+</p>
+<p>
+In addition, if an application calls resource such as RDB without unlocking GVL may cause process suspend. At this case, please increase the number of processes running. If I may change my mind, I will add the GVL free OLEDB binding.
+</p>
+
+<h2>Other</h2>
+<p>
+If you have questions, requests and bug reports, please use the Issues on <a href="https://github.com/arton/ennou">https://github.com/arton/ennou</a>.
+</p>
+<div class="footer"> 
+<hr>
+<address></address>
+<!-- hhmts start --> Last modified: Tue May 03 18:28:54 +0900 2011 <!-- hhmts end -->
+</div>
+</body> </html>
