@@ -1,0 +1,5 @@
+Fri May  6 22:17:00 2011  Tajima Akio <artonx@yahoo.co.jp>
+
+	* ChangeLog: initial release
+	* Rakefile: add for rake-compiler.
+	* ext/* -> ext/ennou/*: move files for rake-compiler
