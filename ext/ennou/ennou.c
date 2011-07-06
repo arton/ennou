@@ -14,7 +14,7 @@
  *
  * $Id:$
  */
-#define Ennou_VERSION  "1.0.0"
+#define Ennou_VERSION  "1.0.1"
 
 /* for windows */
 #define UNICODE
@@ -357,6 +357,8 @@ static void set_resp_headers(HTTP_RESPONSE* resp, VALUE headers)
     rb_hash_foreach(headers, each_resp_header, (VALUE)resp);
 }
 
+#define WAIT_TICK  500
+
 static ULONG wait_io(VALUE self, ULONG stat, LPOVERLAPPED ov, const char* func, ULONGLONG timeout)
 {
     if (stat != ERROR_IO_PENDING)
@@ -370,7 +372,7 @@ static ULONG wait_io(VALUE self, ULONG stat, LPOVERLAPPED ov, const char* func, 
         DWORD dwError;
         if (!RTEST(rb_ivar_get(self, id_break_id)))
         {
-            stat = rb_w32_wait_events(&ov->hEvent, 1, 0);
+            stat = rb_w32_wait_events(&ov->hEvent, 1, WAIT_TICK);
             if (stat == WAIT_TIMEOUT) continue;
             if (stat == WAIT_OBJECT_0) break;
         }
