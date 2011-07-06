@@ -1,3 +1,6 @@
+Thu Jul  7 03:08:00 2011  Tajima Akio <artonx@yahoo.co.jp>
+	* ext/ennou/ennou.c: wait some milliseconds for incoming message. (v1.0.0 -> 1.0.1)
+
 Fri May  6 22:17:00 2011  Tajima Akio <artonx@yahoo.co.jp>
 
 	* ChangeLog: initial release
