@@ -15,7 +15,7 @@ module Rack
         @script = ''
         if options[:config]
           if /^run\s+([^:]+)/ =~ IO::read(options[:config])
-            @script = $1.downcase
+            @script = $1.chomp.downcase
           end
         end
         @port = options[:Port] || '80'
