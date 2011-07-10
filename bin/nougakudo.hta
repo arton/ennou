@@ -55,6 +55,8 @@ class Script
           fp.puts "require 'rack/handler/ennoumu'"
           fp.puts "Rack::Handler::Ennoumu.config :nprocs => #{numproc}"
           wrote = true
+        elsif line =~ %r|rack/handler/ennoumu|
+          # skip
         elsif line =~ /Rack::Handler::Ennoumu.config/
           # skip
         elsif line =~ /^\s*run\s+/
