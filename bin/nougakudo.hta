@@ -47,11 +47,22 @@ class Script
     t = Tempfile.open('noug')
     @tempconf = t.path + '.ru'
     t.close(true)
+    wrote = false
     File.open(@tempconf, 'w') do |fp|
       File.open(@conf, 'r').each_line do |line|
         if line =~ %r|/config/environment|
           fp.puts "require '#{File.expand_path('../config/environment', @conf)}'"
+          fp.puts "require 'rack/handler/ennoumu'"
           fp.puts "Rack::Handler::Ennoumu.config :nprocs => #{numproc}"
+          wrote = true
+        elsif line =~ /Rack::Handler::Ennoumu.config/
+          # skip
+        elsif line =~ /^\s*run\s+/
+          unless wrote
+            fp.puts "require 'rack/handler/ennoumu'"
+            fp.puts "Rack::Handler::Ennoumu.config :nprocs => #{numproc}"
+          end
+          fp.puts line
         else
           fp.puts line
         end
@@ -80,7 +91,7 @@ class Script
 EHTML
   end
 
-  def to_command_args(command_path, params)
+  def to_command_args(per, command_path, params)
     cmd = ["-C#{command_path}"]
     cmd << "#{command_path}\\rackup"
     cmd << "-d" if params[:debug]
@@ -89,8 +100,13 @@ EHTML
     cmd << "-E #{params[:env]}"
     if params[:numproc] != '1'
       cmd << "-s Ennoumu"
-      cmd << "#{create_conf params[:numproc]}"
+      if per
+        cmd << "#{@conf}"
+      else
+        cmd << "#{create_conf params[:numproc]}"
+      end
     else
+      
       cmd << "-s Ennou"
       cmd << "#{@conf}"
     end
@@ -99,6 +115,10 @@ EHTML
 
   def create_options()
     1.upto(NUMBER_OF_PROCESSORS * 2).to_a.map {|i| "<option value=\"#{i}\">#{i}" }.join
+  end
+
+  def save(n)
+    FileUtils.cp create_conf(n), @conf
   end
 
   attr_reader :conf
@@ -117,44 +137,55 @@ def add_script(script, conffile)
     alert("#{script} was already loaded")
     return
   end
-begin
-
+ begin
   @scripts[script] = Script.new(script, conffile)
   row = document.createElement('div')
   row.innerHTML = @scripts[script].to_html
   document.getElementById('apps').appendChild row
-rescue => e
+ rescue => e
   alert(e.message)
   alert(e.backtrace.join('/'))
-end
+ end
 end
 
 def select_ru()
   file = document.getElementById('ru').value
-  if /^run\s+([^:]+)/ =~ IO::read(file)
-    add_script $1.downcase, file
+  if /^\s*run\s+([^:]+)/ =~ IO::read(file)
+    add_script $1.chomp.downcase, file
   else
     alert 'select config.ru'
   end
 end
 
-def start_script(script)
+def create_args(script, persistence)
   /^\s*(?:"([^"]+)|([^ ]+))/ =~ document.getElementById("nouGakuDoApp").commandLine
   path = File::dirname($1 || $2)
-  args = @scripts[script].to_command_args path, 
+  args = @scripts[script].to_command_args persistence, path, 
     :debug => document.getElementById("d#{script}").checked,
     :warn => document.getElementById("w#{script}").checked,
     :numproc => document.getElementById("c#{script}").value,
     :env => document.getElementById("e#{script}").value
+  return path, args
+end
+
+def start_script(script)
+  path, args = create_args(script, false)
   if $DEBUG
     document.getElementById("commandline").innerHTML = CGI.escapeHTML("#{path}\\ruby.exe #{args.join(' ')}")
     document.getElementById("configpath").innerHTML = CGI.escapeHTML(args.last)
   end
-  SuExec.exec "#{path}\\ruby.exe", args
+  SuExec.exec "#{path}\\ruby.exe", *args
 end
 
 def save_settings()
-  
+  @scripts.each do |k, scr|
+    scr.save(document.getElementById("c#{k}").value)
+    path, args = create_args(k, true)
+    File.open("#{scr.script_path}/#{k}.bat", 'wb') do |fout|
+      fout.puts("set PATH=#{path};%PATH%\r")
+      fout.puts("#{path}\\sudo.bat #{path}\\ruby.exe #{args.join(' ')}\r")
+    end
+  end
 end
 
 def cleanup()
