@@ -14,7 +14,7 @@
  *
  * $Id:$
  */
-#define Ennou_VERSION  "1.0.1"
+#define Ennou_VERSION  "1.0.2"
 
 /* for windows */
 #define UNICODE
@@ -945,6 +945,8 @@ static VALUE server_initialize(int argc, VALUE* argv, VALUE svr)
     }
     rb_ivar_set(svr, id_group_id, LL2NUM(gid));
     rb_ivar_set(svr, id_controller_id, Qfalse);
+    rb_ivar_set(svr, id_break_id, Qfalse);
+    rb_ivar_set(svr, id_event_id, Qnil);
     cqname = to_wchar(qname);
     if (RTEST(multi))
     {
