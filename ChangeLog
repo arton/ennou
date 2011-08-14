@@ -1,3 +1,7 @@
+Mon Aug 15 00:09:00 2011  Tajima Akio <artonx@yahoo.co.jp>
+        * bin/editable.bat: change editable text's line separator from LF to CR/LF for Notepad.
+        * bin/tds_setup.bat: change default rails generated files to tds enabled.
+
 Sat Jul 16 02:09:00 2011  Tajima Akio <artonx@yahoo.co.jp>
 	*`ext/ennou/ennou.c: initialize instance variables (@break, @event) for server
 
