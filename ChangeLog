@@ -1,3 +1,7 @@
+Sun Sep  4 00:11:14 2011  Tajima Akio <artonx@yahoo.co.jp>
+	* ext/ennou/ennou.c: version 1.1.0
+	                     support virtual host.
+	* lib/rack/handler/ennou.rb: support virtual host if config[:Host] was supplied.
 Sat Sep  3 16:15:23 2011  Tajima Akio <artonx@yahoo.co.jp>
 	* ext/ennou/ennou.c: explicitly set 'ASCII-8BIT' external encoding for StringIO
 

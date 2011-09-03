@@ -19,7 +19,12 @@ module Rack
           end
         end
         @port = options[:Port] || '80'
-        @host = (options[:Host] == '0.0.0.0') ? '+' : options[:Host]
+        if options[:Host] == '0.0.0.0'
+          @host = '+'
+        else
+          @host = options[:Host]
+          @script = ''
+        end
       end
 
       def self.run(app, options = {})

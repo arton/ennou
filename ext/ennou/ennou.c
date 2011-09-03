@@ -14,7 +14,7 @@
  *
  * $Id:$
  */
-#define Ennou_VERSION  "1.0.2"
+#define Ennou_VERSION  "1.1.0"
 
 /* for windows */
 #define UNICODE
@@ -183,6 +183,7 @@ static ID id_wrote_id;
 static ID id_content_length_id;
 static ID id_input_id;
 static ID id_controller_id;
+static ID id_scriptname_id;
 static ID id_str_encode;
 static ID id_bytesize;
 static ID id_downcase;
@@ -714,6 +715,8 @@ static VALUE resp_write(VALUE self, VALUE buff)
 
 static VALUE server_add(VALUE self, VALUE uri)
 {
+    PSTR uri8;
+    PSTR script;
     VALUE gid = rb_ivar_get(self, id_group_id);
     PCWSTR uri16 = to_wchar(uri);
     ULONG ret = HttpAddUrlToUrlGroup(NUM2LL(gid),
@@ -724,6 +727,17 @@ static VALUE server_add(VALUE self, VALUE uri)
     {
         rb_raise(rb_eSystemCallError, "call HttpAddUrlToUrlGroup for %s (%d)",
                  StringValueCStr(uri), ret);
+    }
+    uri8 = StringValueCStr(uri);
+    script = strrchr(uri8, '/');
+    if (!script || !*(script + 1))
+    {
+        rb_ivar_set(self, id_scriptname_id, EMPTY_STRING);
+    }
+    else
+    {
+        VALUE vscript = rb_str_new2(script);
+        rb_ivar_set(self, id_scriptname_id, rb_str_freeze(vscript));
     }
     return uri;
 }
@@ -830,26 +844,17 @@ static VALUE server_wait(VALUE self, VALUE secs)
     }
     if (req->CookedUrl.AbsPathLength)
     {
-        char* chrp;
+        VALUE script = rb_ivar_get(self, id_scriptname_id);
         url = to_utf8(req->CookedUrl.pAbsPath, req->CookedUrl.AbsPathLength / 2);
-        chrp = strchr(url + 1, '/');
-        if (chrp)
+        if (!strncmp(url, StringValueCStr(script), rb_str_strlen(script)))
         {
-            rb_hash_aset(env, SCRIPT_NAME, rb_str_new(url, (size_t)chrp - (size_t)url));
-            rb_hash_aset(env, PATH_INFO, rb_str_new2(chrp));
+            rb_hash_aset(env, SCRIPT_NAME, script);
+            rb_hash_aset(env, PATH_INFO, rb_str_new2(url + rb_str_strlen(script)));
         }
         else
         {
-            if (*(url + 1))
-            {
-                rb_hash_aset(env, SCRIPT_NAME, rb_str_new2(url));
-                rb_hash_aset(env, PATH_INFO, EMPTY_STRING);
-            }
-            else
-            {
-                rb_hash_aset(env, SCRIPT_NAME, EMPTY_STRING);
-                rb_hash_aset(env, PATH_INFO, rb_str_new("/", 1));
-            }   
+            rb_hash_aset(env, SCRIPT_NAME, EMPTY_STRING);
+            rb_hash_aset(env, PATH_INFO, rb_str_new2(url));
         }
         free((LPVOID)url);
     }
@@ -1067,6 +1072,7 @@ void Init_ennou()
     id_content_length_id = rb_intern("@content_length");
     id_input_id = rb_intern("@input");
     id_controller_id = rb_intern("@controller");
+    id_scriptname_id = rb_intern("@scriptname");
     id_str_encode = rb_intern("encode");
     id_bytesize = rb_intern("bytesize");
     id_downcase = rb_intern("downcase");
