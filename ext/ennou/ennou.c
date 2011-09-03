@@ -188,6 +188,7 @@ static ID id_bytesize;
 static ID id_downcase;
 static ID id_encoding;
 static ID id_binmode;
+static ID id_set_encoding;
 static ID id_open;
 static ID id_write;
 
@@ -549,6 +550,7 @@ static VALUE req_input(VALUE self)
         }
         rb_ivar_set(self, id_input_id,
                     input = rb_class_new_instance(1, &reqbody, stringio));
+        rb_funcall(input, id_set_encoding, 2, rb_enc_from_encoding(rb_ascii8bit_encoding()), Qnil);
     }
     else
     {
@@ -889,8 +891,9 @@ static VALUE server_wait(VALUE self, VALUE secs)
     }
     if (!NIL_P(reqbody))
     {
-        rb_ivar_set(resp, id_input_id,
-                    rb_class_new_instance(1, &reqbody, stringio));
+        VALUE siop = rb_class_new_instance(1, &reqbody, stringio);
+        rb_funcall(siop, id_set_encoding, 2, rb_enc_from_encoding(rb_ascii8bit_encoding()), Qnil);
+        rb_ivar_set(resp, id_input_id, siop);
     }
     rb_ary_push(result, resp);
     return result;
@@ -1069,6 +1072,7 @@ void Init_ennou()
     id_downcase = rb_intern("downcase");
     id_encoding = rb_intern("encoding");
     id_binmode = rb_intern("binmode");
+    id_set_encoding = rb_intern("set_encoding");
     id_open = rb_intern("open");
     id_write = rb_intern("write");
     utf16_enc = rb_const_get_from(rb_cEncoding, rb_intern("UTF_16LE"));
