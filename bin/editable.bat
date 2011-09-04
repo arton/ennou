@@ -14,7 +14,7 @@ end
 def convert(f)
   tmp = Tempfile.new('ned')
   tmp.binmode
-  File.open(f, 'r').each_line do |line|
+  File.open(f, 'r:utf-8').each_line do |line|
     tmp.write "#{line.rstrip}\r\n"
   end.close
   tmp.close
