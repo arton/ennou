@@ -26,7 +26,11 @@ module Rack
           if server.controller?
             @stoprun = false
             @logger.info "Ennou(#{::Ennou::VERSION}) controller pid=#{$$} start on #{RUBY_VERSION}(#{RUBY_PLATFORM})"
-            server.add "http://#{@host}:#{@port}/#{@script}"
+            if @script == ''
+              server.add "http://#{@host}:#{@port}/"
+            else
+              server.add "http://#{@host}:#{@port}/#{@script}/"
+            end
             pids = []
             cmd = "#{::File.expand_path('../ruby.exe', $0)} #{::File.expand_path("../#{@rackup}", $0)} #{$DEBUG ? '-d' : ''} #{$VERBOSE ? '-w' : ''} -p #{@port} -s Ennoumu \"#{options[:config]}\""
             1.upto(@nprocs) do

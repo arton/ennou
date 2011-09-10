@@ -31,7 +31,11 @@ module Rack
         setup(options)
         ::Ennou::Server.open(QNAME) do |server|
           @server = server
-          server.add "http://#{@host}:#{@port}/#{@script}"
+          if @script == ''
+            server.add "http://#{@host}:#{@port}/"
+          else
+            server.add "http://#{@host}:#{@port}/#{@script}/"
+          end
           @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{@host}:#{@port}/#{@script}"
           loop do
             begin
