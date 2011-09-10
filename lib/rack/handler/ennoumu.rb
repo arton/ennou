@@ -42,6 +42,8 @@ module Rack
             end  
             @logger.info "Ennou(#{::Ennou::VERSION}) controller pid=#{$$} stop"
           else
+            server.script =  @script
+            @logger.info "script=#{server.script}, #{@script}"
             @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{@host}:#{@port}/#{@script} pid=#{$$}"
             loop do
               begin

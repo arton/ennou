@@ -14,7 +14,7 @@
  *
  * $Id:$
  */
-#define Ennou_VERSION  "1.1.0"
+#define Ennou_VERSION  "1.1.1"
 
 /* for windows */
 #define UNICODE
@@ -758,6 +758,17 @@ static VALUE server_remove(VALUE self, VALUE uri)
     return uri;
 }
 
+static VALUE server_set_script(VALUE self, VALUE script)
+{
+    rb_ivar_set(self, id_scriptname_id, script);
+    return script;
+}
+
+static VALUE server_get_script(VALUE self)
+{
+    return rb_ivar_get(self, id_scriptname_id);
+}
+
 static VALUE server_break(VALUE self)
 {
     rb_ivar_set(self, id_break_id, Qtrue);
@@ -1094,6 +1105,8 @@ void Init_ennou()
     rb_define_method(server_class, "break", server_break, 0);
     rb_define_method(server_class, "add", server_add, 1);
     rb_define_method(server_class, "remove", server_remove, 1);
+    rb_define_method(server_class, "script=", server_set_script, 1);
+    rb_define_method(server_class, "script", server_get_script, 0);
     rb_mod_attr(1, &symgid, server_class);
 
     ennou_io = rb_define_class_under(ennou, "EnnouIO", rb_cObject);

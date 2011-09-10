@@ -1,3 +1,7 @@
+Sun Sep 11 03:44:32 2011  Tajima Akio <artonx@yahoo.co.jp>
+	* ext/ennou/ennou.c: version# 1.1.0 -> 1.1.1
+	                     export script instance_variable for control uri.
+	* lib/rack/handler/ennoumu.rb: set scriptname to the server.
 Sat Sep 10 21:12:30 2011  Tajima Akio <artonx@yahoo.co.jp>
 	* lib/rack/handler/ennou.rb: fix urlprefix for HttpAddUrlToUrlGroup with no script.
 	* lib/rack/handler/ennoumu.rb: fix urlprefix for HttpAddUrlToUrlGroup with no script.
