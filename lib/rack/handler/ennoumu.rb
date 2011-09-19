@@ -32,7 +32,7 @@ module Rack
               server.add "http://#{@host}:#{@port}/#{@script}/"
             end
             pids = []
-            cmd = "#{::File.expand_path('../ruby.exe', $0)} #{::File.expand_path("../#{@rackup}", $0)} #{$DEBUG ? '-d' : ''} #{$VERBOSE ? '-w' : ''} -p #{@port} -s Ennoumu \"#{options[:config]}\""
+            cmd = "#{::File.expand_path('../ruby.exe', $0)} #{::File.expand_path("../#{@rackup}", $0)} #{$DEBUG ? '-d' : ''} #{$VERBOSE ? '-w' : ''} #{@host == '+' ? '' : "-o #{@host}"} -p #{@port} -s Ennoumu \"#{options[:config]}\""
             1.upto(@nprocs) do
               pids << spawn(cmd)
               @logger.info " spawn worker pid=#{pids.last}"

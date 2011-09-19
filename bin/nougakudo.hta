@@ -33,7 +33,6 @@ WHEIGHT = 400
 
 NUMBER_OF_PROCESSORS = ENV['NUMBER_OF_PROCESSORS'].to_i
 SETTINGS = 'nougakudo.conf'
-
 class Script
   def initialize(script, path)
     @script = script
@@ -76,13 +75,13 @@ class Script
   def to_html()
 <<EHTML
 <ul>
-  <li>#{@script}</li>
+  <li><select id="sel#{@script}"><option value="0" selected>Directory</option><option value="1">Host</option></select><span id="selval#{@script}">#{@script}</span><input type="text" id="vhos#{@script}" maxlength="24" style="visibility:hidden"></li>
   <li>#{CGI.escapeHTML(@conf)}</li>
   <li>Environment <select id="e#{@script}">
-       <option value="development">development
-       <option value="production">production
-       <option value="test">test
-    </select>
+       <option value="development">development</option>
+       <option value="production">production</option>
+       <option value="test">test</option>
+    </select></li>
   <li><input type="checkbox" id="d#{@script}">set debugging flags</li>
   <li><input type="checkbox" id="w#{@script}">set warnings flags</li>
   <li><a href="http://localhost/#{@script}/">index</a></li>
@@ -92,23 +91,51 @@ class Script
 </ul>
 EHTML
   end
+  def add_event(elem)
+    find_and_set(elem, "sel#{@script}") do |elem|
+      elem.attachEvent('onchange', Proc.new {
+        f = Window.event.srcElement.value == '0'
+        Window.document.getElementById("selval#{@script}").style.display = to_display(f)
+        Window.document.getElementById("vhos#{@script}").style.visibility = to_visibility(!f)
+      })
+    end
+  end
+  def to_visibility(f)
+    f ? 'visible' : 'hidden'
+  end
+  def to_display(f)
+    f ? 'inline' : 'none'
+  end
+  def find_and_set(elem, id, &proc)
+    elem.children.each do |c|
+      if c.id == id
+        proc.call(c)
+        return true
+      elsif c.children.length > 0
+        c.children.each do |cc|
+          return true if find_and_set(cc, id, &proc)
+        end
+      end
+    end
+    false
+  end
 
-  def to_command_args(per, command_path, params)
+  def to_command_args(persistence, command_path, params)
     cmd = ["-C#{command_path}"]
     cmd << "#{command_path}\\rackup"
     cmd << "-d" if params[:debug]
     cmd << "-w" if params[:warn]
+    cmd << "-o #{params[:vhost]}" if params[:vhost]
     cmd << "-p 80"
     cmd << "-E #{params[:env]}"
     if params[:numproc] != '1'
       cmd << "-s Ennoumu"
-      if per
+      if persistence
         cmd << "#{@conf}"
       else
         cmd << "#{create_conf params[:numproc]}"
       end
     else
-      
       cmd << "-s Ennou"
       cmd << "#{@conf}"
     end
@@ -132,6 +159,8 @@ def init()
   resizeTo WWIDTH, WHEIGHT
   document.getElementById("ennou-version").innerHTML = "Ennou #{Ennou::VERSION}"
   document.getElementById("ruby-version").innerHTML = RUBY_DESCRIPTION
+  document.getElementById('ru').attachEvent('onpropertychange', Proc.new { select_ru })
+  document.getElementById('save').attachEvent('onclick', Proc.new { save_settings })
 end
 
 def add_script(script, conffile)
@@ -144,6 +173,7 @@ def add_script(script, conffile)
   row = document.createElement('div')
   row.innerHTML = @scripts[script].to_html
   document.getElementById('apps').appendChild row
+  @scripts[script].add_event(row)
  rescue => e
   alert(e.message)
   alert(e.backtrace.join('/'))
@@ -160,13 +190,22 @@ def select_ru()
 end
 
 def create_args(script, persistence)
+  vhost = nil
+  if document.getElementById("sel#{script}").value == '1'
+    vhost = document.getElementById("vhos#{script}").value
+    if vhost.nil? || vhost.size == 0
+      alert('no hostname specified')
+      return
+    end
+  end
   /^\s*(?:"([^"]+)|([^ ]+))/ =~ document.getElementById("nouGakuDoApp").commandLine
   path = File::dirname($1 || $2)
   args = @scripts[script].to_command_args persistence, path, 
     :debug => document.getElementById("d#{script}").checked,
     :warn => document.getElementById("w#{script}").checked,
     :numproc => document.getElementById("c#{script}").value,
-    :env => document.getElementById("e#{script}").value
+    :env => document.getElementById("e#{script}").value,
+    :vhost => vhost
   return path, args
 end
 
@@ -198,12 +237,12 @@ end
 <body onload="init()" onunload="cleanup()">
  <div class="console">
   select your config.ru: 
-  <input type="file" id="ru" value="select ru" onpropertychange="select_ru" language="RubyScript.1.9">
+  <input type="file" id="ru" value="select ru">
  </div>
  <div id="apps">
  </div>
  <div class="misc">
-   <input type="button" id="save" value="save config" onclick="save_settings" langauge="RubyScript.1.9">
+   <input type="button" id="save" value="save config">
  </div>
  <div id="message">
   <div id="commandline"></div>
