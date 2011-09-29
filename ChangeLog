@@ -1,4 +1,10 @@
 Fri Sep 30 0:44:28  2011  Tajima Akio <artonx@yahoo.co.jp>
+	* bin/editable.bat: add WinNT label for post-install
+	* bin/launch-nougakudo.bat: add WinNT label for post-install
+	* bin/setenv19.bat: add WinNT label for post-install
+	* bin/tds_setup.bat: add WinNT label for post-install,
+	                     add create_db.rake for database creation.
+Fri Sep 30 0:44:28  2011  Tajima Akio <artonx@yahoo.co.jp>
 	* lib/rack/handler/ennou.rb: place '/' on top of the script name.
 	* lib/rack/handler/ennoumu.rb: place '/' on top of the script name.	
 Mon Sep 19 10:58:20 2011  Tajima Akio <artonx@yahoo.co.jp>

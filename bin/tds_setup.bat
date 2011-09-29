@@ -1,4 +1,5 @@
 @echo off
+:WinNT
 "%~dp0ruby" -x "%~f0" %*
 @goto endofruby
 #!ruby
@@ -32,6 +33,29 @@ CONF.each do |file, repls|
   tmp.close
   FileUtils.cp tmp.path, "#{ARGV[0]}/#{file}"
   $stdout.puts "#{file} converted"
+end
+
+File.open("#{ARGV[0]}/lib/tasks/createdb.rake", 'w') do |fout|
+  fout.write <<EOF
+namespace :db do
+  task :create_db => :load_config do
+    exec_from_master :create_database
+  end
+
+  task :drop_db => :load_config do
+    exec_from_master :drop_database
+  end
+
+  def exec_from_master(cmd)
+    ActiveRecord::Base.configurations.each_value do |config|
+      target = config['database']
+      config['database'] = 'master'
+      ActiveRecord::Base.establish_connection(config)
+      ActiveRecord::Base.connection.__send__(cmd, target)
+    end
+  end
+end
+EOF
 end
 
 system("#{File.dirname($0)}/editable.bat #{ARGV[0]}")

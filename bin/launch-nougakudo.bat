@@ -1,4 +1,5 @@
 @echo off
+:WinNT
 "%~dp0ruby" -x "%~f0" %*
 @goto endofruby
 #!/usr/bin/ruby
