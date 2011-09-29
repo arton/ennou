@@ -29,7 +29,7 @@ module Rack
             if @script == ''
               server.add "http://#{@host}:#{@port}/"
             else
-              server.add "http://#{@host}:#{@port}/#{@script}/"
+              server.add "http://#{@host}:#{@port}#{@script}/"
             end
             pids = []
             cmd = "#{::File.expand_path('../ruby.exe', $0)} #{::File.expand_path("../#{@rackup}", $0)} #{$DEBUG ? '-d' : ''} #{$VERBOSE ? '-w' : ''} #{@host == '+' ? '' : "-o #{@host}"} -p #{@port} -s Ennoumu \"#{options[:config]}\""
@@ -44,7 +44,7 @@ module Rack
           else
             server.script =  @script
             @logger.info "script=#{server.script}, #{@script}"
-            @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{@host}:#{@port}/#{@script} pid=#{$$}"
+            @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{@host}:#{@port}#{@script} pid=#{$$}"
             loop do
               begin
                 r = server.wait(60)
@@ -54,7 +54,7 @@ module Rack
                 break
               end
             end
-            @logger.info "Ennou(#{::Ennou::VERSION}) stop service for http://#{@host}:#{@port}/#{@script} pid=#{$$}"
+            @logger.info "Ennou(#{::Ennou::VERSION}) stop service for http://#{@host}:#{@port}#{@script} pid=#{$$}"
           end
         end
       end   

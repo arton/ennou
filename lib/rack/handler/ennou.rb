@@ -15,7 +15,7 @@ module Rack
         @script = ''
         if options[:config]
           if /^run\s+([^:]+)/ =~ IO::read(options[:config])
-            @script = $1.chomp.downcase
+            @script = "/#{$1.chomp.downcase}"
           end
         end
         @port = options[:Port] || '80'
@@ -34,9 +34,9 @@ module Rack
           if @script == ''
             server.add "http://#{@host}:#{@port}/"
           else
-            server.add "http://#{@host}:#{@port}/#{@script}/"
+            server.add "http://#{@host}:#{@port}#{@script}/"
           end
-          @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{@host}:#{@port}/#{@script}"
+          @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{@host}:#{@port}#{@script}"
           loop do
             begin
               r = server.wait(60)
@@ -46,7 +46,7 @@ module Rack
               break
             end
           end
-          @logger.info "Ennou(#{::Ennou::VERSION}) stop service for http://#{@host}:#{@port}/#{@script}"
+          @logger.info "Ennou(#{::Ennou::VERSION}) stop service for http://#{@host}:#{@port}#{@script}"
         end
       end   
 
