@@ -35,6 +35,7 @@ module Rack
             server.add "http://#{@host}:#{@port}/"
           else
             server.add "http://#{@host}:#{@port}#{@script}/"
+            server.script = @script
           end
           @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{@host}:#{@port}#{@script}"
           loop do
