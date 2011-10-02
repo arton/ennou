@@ -73,24 +73,20 @@ class Script
   end
 
   def create_env(vhost)
-    ['development.rb', 'test.rb', 'production.rb'].each do |envf|
-      conf = "#{script_path}/config/environments/#{envf}"
-      fp = Tempfile.open('noug')
-      File.open(conf, 'r').each_line do |line|
-        if line =~ /\A\s*config.action_controller.relative_url_root/
-          # skip
-        elsif line =~ /\Aend\s*\z/
-          unless vhost
-            fp.puts "  config.action_controller.relative_url_root = '/#{@script}'"
-            fp.puts "end"
-          end
-        else
-          fp.puts line
-        end
-      end.close
-      fp.close
-      FileUtils.cp fp.path, conf
+    conf = "#{script_path}/config/environment.rb"
+    fp = Tempfile.open('noug')
+    fin = File.open(conf, 'r').each_line do |line|
+      if line =~ /\AENV\['RAILS_RELATIVE_URL_ROOT\]/
+        # skip
+      else
+        fp.puts line
+      end
     end
+    unless vhost
+      fp.puts "ENV['RAILS_RELATIVE_URL_ROOT'] = '/#{@script}'"
+    end
+    fp.close
+    FileUtils.cp fp.path, conf
   end
 
   def to_html()

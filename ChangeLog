@@ -1,3 +1,5 @@
+Mon Sep 3  04:33:00 2011  Tajima Akio <artonx@yahoo.co.jp>
+	* bin/nougakudo.hta: remove config.action_controller.relative_url_root and use by hand.
 Mon Sep 3  03:47:00 2011  Tajima Akio <artonx@yahoo.co.jp>
 	* ext/ennou/ennou.c: version 1.1.2, fix status 304 overwrite bug (to 204).
 	* bin/tds_setup.rb: remove config.action_controller.asset_path.
