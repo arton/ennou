@@ -76,7 +76,7 @@ class Script
     conf = "#{script_path}/config/environment.rb"
     fp = Tempfile.open('noug')
     fin = File.open(conf, 'r').each_line do |line|
-      if line =~ /\AENV\['RAILS_RELATIVE_URL_ROOT\]/
+      if line =~ /\AENV\['RAILS_RELATIVE_URL_ROOT'\]/
         # skip
       else
         fp.puts line
