@@ -20,9 +20,6 @@ CONF = {
     [/\A\s+adapter:.+\z/, '  adapter: sqlserver'],
     [/\A\s+database:\s*db\/([^.]+).+\z/, "  database: \\1db\n  username: sa\n  password: hidden\n  dataserver: localhost\\SQLEXPRESS"],
   ],
-  'config/application.rb' => [
-    [/\A  end\s*\z/, "    config.action_controller.asset_path = \"/#{ARGV[0]}/%s\"\n  end"],
-  ],
 }
 
 CONF.each do |file, repls|

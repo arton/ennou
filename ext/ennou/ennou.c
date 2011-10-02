@@ -14,7 +14,7 @@
  *
  * $Id:$
  */
-#define Ennou_VERSION  "1.1.1"
+#define Ennou_VERSION  "1.1.2"
 
 /* for windows */
 #define UNICODE
@@ -453,7 +453,10 @@ static void resp_write_header_and_data(VALUE self, VALUE body, bool disc, bool m
     if (NIL_P(body))
     {
         body = rb_str_new("", 0);
-        status = INT2FIX(204);
+        if (status == INT2FIX(200))
+        {
+            status = INT2FIX(204);
+        }
     }
     required_flush(self, status, headers, body, disc, moredata);
 }
@@ -608,6 +611,8 @@ static VALUE req_input(VALUE self)
  */
 static VALUE resp_close(VALUE self)
 {
+    VALUE wrote = rb_ivar_get(self, id_wrote_id);
+    if (NIL_P(wrote)) return Qnil;
     resp_finish(self, false);
     return Qnil;
 }

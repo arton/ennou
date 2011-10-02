@@ -43,7 +43,7 @@ class Script
     File::dirname(@conf)
   end
   def create_conf(numproc)
-    t = Tempfile.open('noug')
+     t = Tempfile.open('noug')
     @tempconf = t.path + '.ru'
     t.close(true)
     wrote = false
@@ -70,6 +70,27 @@ class Script
       end.close
     end
     @tempconf
+  end
+
+  def create_env(vhost)
+    ['development.rb', 'test.rb', 'production.rb'].each do |envf|
+      conf = "#{script_path}/config/environments/#{envf}"
+      fp = Tempfile.open('noug')
+      File.open(conf, 'r').each_line do |line|
+        if line =~ /\A\s*config.action_controller.relative_url_root/
+          # skip
+        elsif line =~ /\Aend\s*\z/
+          unless vhost
+            fp.puts "  config.action_controller.relative_url_root = '/#{@script}'"
+            fp.puts "end"
+          end
+        else
+          fp.puts line
+        end
+      end.close
+      fp.close
+      FileUtils.cp fp.path, conf
+    end
   end
 
   def to_html()
@@ -125,7 +146,10 @@ EHTML
     cmd << "#{command_path}\\rackup"
     cmd << "-d" if params[:debug]
     cmd << "-w" if params[:warn]
-    cmd << "-o #{params[:vhost]}" if params[:vhost]
+    if params[:vhost]
+      cmd << "-o #{params[:vhost]}" 
+    end
+    create_env(params[:vhost])
     cmd << "-p 80"
     cmd << "-E #{params[:env]}"
     if params[:numproc] != '1'
