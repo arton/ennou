@@ -59,6 +59,10 @@ module Rack
         end
       end   
 
+      def self.multiprocess?
+        true
+      end
+
       def self.shutdown
         if @server.controller?
           @stoprun = true

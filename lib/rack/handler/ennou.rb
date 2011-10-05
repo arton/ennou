@@ -50,6 +50,10 @@ module Rack
           @logger.info "Ennou(#{::Ennou::VERSION}) stop service for http://#{@host}:#{@port}#{@script}"
         end
       end   
+      
+      def self.multiprocess?
+        false
+      end
 
       def self.shutdown
         @server.break
@@ -64,7 +68,7 @@ module Rack
                        'rack.input' => io.input,
                        'rack.errors' => $stderr,
                        'rack.multithread' => true,
-                       'rack.multiprocess' => false,
+                       'rack.multiprocess' => multiprocess?,
                        'rack.run_once' => false,
                        'rack.url_scheme' => env['URL_SCHEME']
                      })
