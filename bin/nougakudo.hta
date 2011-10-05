@@ -75,15 +75,15 @@ class Script
   def create_env(vhost)
     conf = "#{script_path}/config/environment.rb"
     fp = Tempfile.open('noug')
+    unless vhost
+      fp.puts "ENV['RAILS_RELATIVE_URL_ROOT'] = '/#{@script}'"
+    end
     fin = File.open(conf, 'r').each_line do |line|
       if line =~ /\AENV\['RAILS_RELATIVE_URL_ROOT'\]/
         # skip
       else
         fp.puts line
       end
-    end
-    unless vhost
-      fp.puts "ENV['RAILS_RELATIVE_URL_ROOT'] = '/#{@script}'"
     end
     fp.close
     FileUtils.cp fp.path, conf
