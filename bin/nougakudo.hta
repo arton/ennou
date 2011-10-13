@@ -42,7 +42,7 @@ class Script
   def script_path()
     File::dirname(@conf)
   end
-  def create_conf(numproc)
+  def create_conf(numproc, tempfile)
      t = Tempfile.open('noug')
     @tempconf = t.path + '.ru'
     t.close(true)
@@ -50,7 +50,11 @@ class Script
     File.open(@tempconf, 'w') do |fp|
       File.open(@conf, 'r').each_line do |line|
         if line =~ %r|/config/environment|
-          fp.puts "require '#{File.expand_path('../config/environment', @conf)}'"
+          if tempfile
+            fp.puts "require '#{File.expand_path('../config/environment', @conf)}'"
+          else
+            fp.puts line
+          end
           fp.puts "require 'rack/handler/ennoumu'"
           fp.puts "Rack::Handler::Ennoumu.config :nprocs => #{numproc}"
           wrote = true
@@ -153,7 +157,7 @@ EHTML
       if persistence
         cmd << "#{@conf}"
       else
-        cmd << "#{create_conf params[:numproc]}"
+        cmd << "#{create_conf params[:numproc], true}"
       end
     else
       cmd << "-s Ennou"
@@ -167,7 +171,7 @@ EHTML
   end
 
   def save(n)
-    FileUtils.cp create_conf(n), @conf
+    FileUtils.cp create_conf(n, false), @conf
   end
 
   attr_reader :conf

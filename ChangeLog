@@ -1,4 +1,6 @@
-Thu Oct 6  1:31:23 2001  Tajima Akio <artonx@yahoo.co.jp>
+Thu Oct 13 22:45:50 2011  Tajima Akio <artonx@yahoo.co.jp>
+	* bin/nougakudo.hta: keep original require unless temporary config.ru
+Thu Oct 6  1:31:23 2011  Tajima Akio <artonx@yahoo.co.jp>
 	* bin/nougakudo.hta: move setting RAILS_RELATIVE_URL_ROOT to top of the script.
 Thu Oct 6  00:35:18 2011  Tajima Akio <artonx@yahoo.co.jp>
 	* lib/rack/handler/ennou.rb, ennoumu.rb: set rack.multiprocess correctly.
