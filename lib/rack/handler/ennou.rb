@@ -8,6 +8,7 @@ module Rack
   module Handler
     class Ennou
 
+      VERSION = '1.1.7'
       QNAME = 'Ennou_Queue'
       
       def self.setup(options)
@@ -29,7 +30,7 @@ module Rack
 
       def self.run(app, options = {})
         setup(options)
-        ::Ennou::Server.open(QNAME) do |server|
+        ::Ennou::Server.open(create_qname) do |server|
           @server = server
           if @script == ''
             server.add "http://#{@host}:#{@port}/"
@@ -61,6 +62,12 @@ module Rack
       end
       
       private
+
+      def self.create_qname
+        qname = "#{QNAME}_#{(@script == '') ? @host : @script}".gsub('/', '')
+        @logger.info 'Ennou qname=' + qname
+        qname
+      end
       
       def self.run_thread(app, env, io)
         Thread.start do

@@ -6,7 +6,9 @@ module Rack
   module Handler
     class Ennoumu < Ennou
 
-      @qname = 'EnnouMu_Queue'
+      QNAME = 'EnnouMu_Queue'
+
+      @qname = nil
       @nprocs = 2
       @rackup = 'rackup'
 
@@ -21,7 +23,7 @@ module Rack
         
       def self.run(app, options = {})
         setup(options)
-        ::Ennou::Server.open(@qname, true) do |server|
+        ::Ennou::Server.open(create_qname, true) do |server|
           @server = server
           if server.controller?
             @stoprun = false
@@ -73,6 +75,12 @@ module Rack
       end
       
       private
+
+      def self.create_qname
+        qname = "#{QNAME}_#{(@qnamae.nil?) ? ((@script == '') ? @host : @script) : @qname}".gsub('/', '')
+        @logger.info 'EnnouMu qname=' + qname
+        qname
+      end
       
     end
   end    
