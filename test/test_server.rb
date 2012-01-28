@@ -84,8 +84,8 @@ class TestServer < Test::Unit::TestCase
         assert_equal("GET", env['REQUEST_METHOD'])
         assert_equal("HTTP/1.1", env['SERVER_PROTOCOL'])
         assert_equal("Ruby", env['HTTP_USER_AGENT'])
-        assert_equal("/test", env['SCRIPT_NAME'])
-        assert_equal("/", env['PATH_INFO'])
+        assert_equal("", env['SCRIPT_NAME'])
+        assert_equal("/test/", env['PATH_INFO'])
         assert_equal("", env['QUERY_STRING'])
         assert_equal("text/html,*/*", env['HTTP_ACCEPT'])
         io.lump 200, { 'content-type' => "text/plain" }, 'hello'
@@ -202,39 +202,54 @@ class TestServer < Test::Unit::TestCase
     end
   end
 
+  def do_resp(io)
+    io.status = 200
+    io.headers = { 'content-type' => "text/plain" }
+    io.write 'hello'
+    io.close
+  end
+
   def test_uri
     Ennou::Server.open(QNAME) do |s|
       begin
         s.add 'http://+:80/'
         # by administrator
-        Thread.start do
+        t = Thread.start do
           open('http://localhost/').read
         end
         env, io = s.wait(0.1)
         assert_equal("", env['SCRIPT_NAME'])
         assert_equal("/", env['PATH_INFO'])
         assert_equal("", env['QUERY_STRING'])
-        Thread.start do
+        do_resp(io)
+        t.join
+        t = Thread.start do
           open('http://localhost/test').read          
         end
         env, io = s.wait(0.1)
-        assert_equal("/test", env['SCRIPT_NAME'])
-        assert_equal("", env['PATH_INFO'])
+        assert_equal("", env['SCRIPT_NAME'])
+        assert_equal("/test", env['PATH_INFO'])
         assert_equal("", env['QUERY_STRING'])
-        Thread.start do
+        do_resp(io)
+        t.join
+        t = Thread.start do
           open('http://localhost/test?a=3&b=4').read          
         end
         env, io = s.wait(0.1)
-        assert_equal("/test", env['SCRIPT_NAME'])
-        assert_equal("", env['PATH_INFO'])
+        assert_equal("", env['SCRIPT_NAME'])
+        assert_equal("/test", env['PATH_INFO'])
         assert_equal("a=3&b=4", env['QUERY_STRING'])
-        Thread.start do
+        do_resp(io)
+        t.join
+        t = Thread.start do
           open('http://localhost/test/?a=3&b=4').read          
         end
         env, io = s.wait(0.1)
-        assert_equal("/test", env['SCRIPT_NAME'])
-        assert_equal("/", env['PATH_INFO'])
+        assert_equal("", env['SCRIPT_NAME'])
+        assert_equal("/test/", env['PATH_INFO'])
         assert_equal("a=3&b=4", env['QUERY_STRING'])
+        do_resp(io)
+        t.join
       rescue SystemCallError => e
         assert(/\(5\)/ =~ e.message)
       end
@@ -378,6 +393,28 @@ class TestServer < Test::Unit::TestCase
         t.join
       rescue SystemCallError => e
         assert(/\(5\)/ =~ e.message, e.message)
+      end
+    end
+  end
+
+  def test_uri_with_script
+    Ennou::Server.open(QNAME) do |s|
+      begin
+        env = nil
+        s.add 'http://+:80/test/'
+        s.script = '/test'
+        # by administrator
+        t = Thread.start do
+          open('http://localhost/test/').read
+        end
+        env, io = s.wait(0.1)
+        assert_equal("/test", env['SCRIPT_NAME'])
+        assert_equal("/", env['PATH_INFO'])
+        assert_equal("", env['QUERY_STRING'])
+        do_resp(io)
+        t.join
+      rescue SystemCallError => e
+        assert(/\(5\)/ =~ e.message)
       end
     end
   end
