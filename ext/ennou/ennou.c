@@ -14,7 +14,7 @@
  *
  * $Id:$
  */
-#define Ennou_VERSION  "1.1.2"
+#define Ennou_VERSION  "1.1.4"
 
 /* for windows */
 #define UNICODE
@@ -780,12 +780,13 @@ static VALUE server_break(VALUE self)
     return self;
 }
 
+#defne HEADER_BUFF_SIZE 16000
 static VALUE server_wait(VALUE self, VALUE secs)
 {
     ennou_io_t* ennoup;
     VALUE evt, result, resp, reqbody, env = rb_hash_new();
     HANDLE queue = (HANDLE)NUM2LL(rb_ivar_get(self, id_handle_id));
-    BYTE buff[3000];
+    BYTE buff[HEADER_BUFF_SIZE];
     char protobuff[64];
     HTTP_REQUEST* req = (HTTP_REQUEST*)buff;
     OVERLAPPED over;
