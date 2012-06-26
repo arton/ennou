@@ -14,7 +14,7 @@
  *
  * $Id:$
  */
-#define Ennou_VERSION  "1.1.4"
+#define Ennou_VERSION  "1.1.3"
 
 /* for windows */
 #define UNICODE
