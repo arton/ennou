@@ -780,7 +780,7 @@ static VALUE server_break(VALUE self)
     return self;
 }
 
-#defne HEADER_BUFF_SIZE 16000
+#define HEADER_BUFF_SIZE 16000
 static VALUE server_wait(VALUE self, VALUE secs)
 {
     ennou_io_t* ennoup;
