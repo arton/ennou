@@ -597,6 +597,7 @@ static VALUE req_input(VALUE self)
             ResetEvent(over.hEvent);
         }
         rb_funcall(input, id_open, 0);
+        rb_funcall(input, id_binmode, 0);
     }
     CloseHandle(over.hEvent);
     return input;
