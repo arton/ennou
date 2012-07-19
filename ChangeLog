@@ -1,3 +1,5 @@
+Fri Jul 20 2:33:10 2012 Tajima AKio <artonx@yahoo.co.jp>
+	* ext/ennou/ennou.c: reset binmode for tempfile (large post testdata)
 Tue Jun 26 22:08:10 2012  Tajima Akio <artonx@yahoo.co.jp>
 	* ext/ennou/ennou.c: expand header buffer size for HttpReceiveHttpRequest.
  			original size (<3K) is too small and causes rack lint error.
