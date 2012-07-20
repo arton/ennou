@@ -1,9 +1,16 @@
+Sat Jul 21 7:23:15 2012 Tajima Akio <artonx@yahoo.co.jp>
+	* test/test_server.rb: add unknown (by http api) response header test.
+	* ext/ennou/ennou.c: support unknown (by http api) response header set (limited <= 100).
+	                     version 1.1.5
+	* ext/ennou/ennou.h: add unknwon header name holder that protects string value of sym.
+			the problem (issue #2) was reported by sibapy, thank you.
 Fri Jul 20 2:33:10 2012 Tajima AKio <artonx@yahoo.co.jp>
 	* ext/ennou/ennou.c: reset binmode for tempfile (large post testdata)
+			the problem (issue #3) was reported by sibapy, thank you.
 Tue Jun 26 22:08:10 2012  Tajima Akio <artonx@yahoo.co.jp>
 	* ext/ennou/ennou.c: expand header buffer size for HttpReceiveHttpRequest.
  			original size (<3K) is too small and causes rack lint error.
-			the problem was reported by masatec, thank you.
+			the problem (issue #1) was reported by masatec, thank you.
 Sat Oct 15 19:01:10 2011  Tajima Akio <artonx@yahoo.co.jp>
 	* lib/rack/handler/ennou.rb: add a constant named VERSION for script's version number.
 	                             create qname with hostname or scriptname for multple instances.
