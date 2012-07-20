@@ -418,4 +418,29 @@ class TestServer < Test::Unit::TestCase
       end
     end
   end
+
+  def test_unknown_header
+    Ennou::Server.open(QNAME) do |s|
+      begin
+        s.add 'http://+:80/test/'
+        # by administrator
+        t = Thread.start do
+          open('http://localhost/test/') do |f|
+            assert_equal "hello world !", f.read
+            assert_equal '1234', f.meta['unknown-header']
+            assert_equal '5678', f.meta['unknown_header2']
+          end
+        end
+        env, io = s.wait(0.1)
+        io.status = 200
+        io.headers = { 'content-type' => "text/plain", 'content-length' => '13', 
+          'unknown-header' => '1234', :unknown_header2 => '5678' }
+        io.write 'hello world !'
+        io.close
+        t.join
+      rescue SystemCallError => e
+        assert(/\(5\)/ =~ e.message)
+      end
+    end
+  end
 end
