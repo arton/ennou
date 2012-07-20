@@ -1,6 +1,6 @@
 /*
  * ENNOu - http server for rack on windows HTTP Server API
- * Copyright(c) 2011 arton
+ * Copyright(c) 2011,2012 arton
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,7 +14,7 @@
  *
  * $Id:$
  */
-#define Ennou_VERSION  "1.1.4"
+#define Ennou_VERSION  "1.1.5"
 
 /* for windows */
 #define UNICODE
@@ -327,6 +327,7 @@ static int each_resp_header(VALUE key, VALUE value, HTTP_RESPONSE* resp)
     VALUE vlen;
     int len, i;
     ID id;
+    BOOL knownkey = FALSE;
     if (NIL_P(value)) return ST_CONTINUE;
     Check_Type(value, T_STRING);
     vlen = rb_funcall(value, id_bytesize, 0);
@@ -346,10 +347,27 @@ static int each_resp_header(VALUE key, VALUE value, HTTP_RESPONSE* resp)
     {
         if (id == HTTP_RESPONSE_HEADER_IDS[i])
         {
+            knownkey = TRUE;
             resp->Headers.KnownHeaders[i].RawValueLength = ulen;
             resp->Headers.KnownHeaders[i].pRawValue = StringValuePtr(value);
             break;
         }
+    }
+    if (!knownkey && resp->Headers.UnknownHeaderCount < MAX_UNKNOWN_RESP_HEADER)
+    {
+        unknown_header_stack_t* punkh = (unknown_header_stack_t*)resp->Headers.pUnknownHeaders;
+        VALUE keyname = key;
+        if (SYMBOL_P(key))
+        {
+            keyname = rb_sym_to_s(key);
+            // for protecting this VALUE by GC while processing to respond.
+            punkh->unknown_header_names[resp->Headers.UnknownHeaderCount] = keyname;
+        }
+        punkh->unknown_headers[resp->Headers.UnknownHeaderCount].NameLength = RSTRING_LEN(keyname);
+        punkh->unknown_headers[resp->Headers.UnknownHeaderCount].RawValueLength = RSTRING_LEN(value);
+        punkh->unknown_headers[resp->Headers.UnknownHeaderCount].pName = StringValueCStr(keyname);
+        punkh->unknown_headers[resp->Headers.UnknownHeaderCount].pRawValue = StringValueCStr(value);
+        resp->Headers.UnknownHeaderCount++;
     }
     return ST_CONTINUE;
 }
@@ -397,6 +415,7 @@ static ULONG wait_io(VALUE self, ULONG stat, LPOVERLAPPED ov, const char* func, 
 static void required_flush(VALUE self, VALUE stat, VALUE headers, VALUE body, bool disc, bool moredata)
 {
     HTTP_RESPONSE resp;
+    unknown_header_stack_t unknown_header;
     HTTP_DATA_CHUNK chunk;
     ennou_io_t* ennoup;
     OVERLAPPED over;
@@ -415,6 +434,7 @@ static void required_flush(VALUE self, VALUE stat, VALUE headers, VALUE body, bo
     flags = (moredata) ? HTTP_SEND_RESPONSE_FLAG_MORE_DATA : 0;
     flags |= (disc) ? HTTP_SEND_RESPONSE_FLAG_DISCONNECT : 0;
     resp.Flags = 0;
+    resp.Headers.pUnknownHeaders = unknown_header.unknown_headers;
     set_resp_headers(&resp, headers);
     if (resp.Headers.KnownHeaders[HttpHeaderContentLength].RawValueLength)
     {
