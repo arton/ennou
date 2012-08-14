@@ -12,8 +12,8 @@ Ennou is Windows Native HTTP Server, it stands upon HTTP Server API 2.0.
 
  the commands are
 
- netsh http add urlacl http://+:80/testrails user=hostname\your-login-name
- netsh http add urlacl http://+:9292/testrails user=hostname\your-login-name
+ netsh http add urlacl url=http://+:80/testrails user=hostname\your-login-name
+ netsh http add urlacl url=http://+:9292/testrails user=hostname\your-login-name
 
 the command must run on cmd.exe invoked by Administrator.
 
