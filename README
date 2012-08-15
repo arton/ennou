@@ -8,7 +8,7 @@ Ennou is Windows Native HTTP Server, it stands upon HTTP Server API 2.0.
  You may reserve url for Ennou with netsh commnad.
 
  for example, if your application is named testrails, 
- Ennou register url for http://+:80/testrails in production mode or http://+:9292/testrails in development mode.
+ Ennou registers url for http://+:80/testrails in production mode or http://+:9292/testrails in development mode.
 
  the commands are
 
