@@ -14,7 +14,7 @@
  *
  * $Id:$
  */
-#define Ennou_VERSION  "1.1.5"
+#define Ennou_VERSION  "1.1.6"
 
 /* for windows */
 #define UNICODE
@@ -184,6 +184,7 @@ static ID id_content_length_id;
 static ID id_input_id;
 static ID id_controller_id;
 static ID id_scriptname_id;
+static ID id_requests_id;
 static ID id_str_encode;
 static ID id_bytesize;
 static ID id_downcase;
@@ -196,7 +197,9 @@ static ID id_write;
 static HTTP_SERVER_SESSION_ID session_id;
 
 static void uninit_ennou(VALUE);
-
+static VALUE server_end_requests(VALUE);
+static VALUE server_is_controller(VALUE self);
+    
 static void query_property(HTTP_SERVER_PROPERTY prop, PVOID info, ULONG len)
 {
     ULONG optlen = 0;
@@ -386,7 +389,7 @@ static ULONG wait_io(VALUE self, ULONG stat, LPOVERLAPPED ov, const char* func, 
         CloseHandle(ov->hEvent);
         rb_raise(rb_eSystemCallError, "call %s (%d)", func, stat);
     }
-    for (; timeout > GetTickCount64();)
+    for (; timeout == (ULONGLONG)-1 || timeout > GetTickCount64();)
     {
         VALUE exc;
         DWORD dwError;
@@ -420,6 +423,7 @@ static void required_flush(VALUE self, VALUE stat, VALUE headers, VALUE body, bo
     ennou_io_t* ennoup;
     OVERLAPPED over;
     ULONG ret, flags;
+    VALUE server;
     
     if (NIL_P(stat) || NIL_P(headers) || NIL_P(body)) return;
     
@@ -431,8 +435,14 @@ static void required_flush(VALUE self, VALUE stat, VALUE headers, VALUE body, bo
     resp.StatusCode = FIX2INT(stat);
     resp.EntityChunkCount = (chunk.FromMemory.BufferLength) ? 1 : 0;
     resp.pEntityChunks = &chunk;
-    flags = (moredata) ? HTTP_SEND_RESPONSE_FLAG_MORE_DATA : 0;
-    flags |= (disc) ? HTTP_SEND_RESPONSE_FLAG_DISCONNECT : 0;
+    if (moredata)
+    {
+        flags = HTTP_SEND_RESPONSE_FLAG_MORE_DATA;
+    }
+    else
+    {
+        flags = (disc) ? HTTP_SEND_RESPONSE_FLAG_DISCONNECT : 0;
+    }
     resp.Flags = 0;
     resp.Headers.pUnknownHeaders = unknown_header.unknown_headers;
     set_resp_headers(&resp, headers);
@@ -442,8 +452,9 @@ static void required_flush(VALUE self, VALUE stat, VALUE headers, VALUE body, bo
     }
     memset(&over, 0, sizeof(over));
     over.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    server = rb_ivar_get(self, id_server_id);
     Data_Get_Struct(self, ennou_io_t, ennoup);
-    ret = HttpSendHttpResponse((HANDLE)NUM2LL(rb_ivar_get(rb_ivar_get(self, id_server_id), id_handle_id)),
+    ret = HttpSendHttpResponse((HANDLE)NUM2LL(rb_ivar_get(server, id_handle_id)),
                                ennoup->requestId,
                                flags,
                                &resp,
@@ -461,6 +472,7 @@ static void required_flush(VALUE self, VALUE stat, VALUE headers, VALUE body, bo
     if (!moredata)
     {
         rb_ivar_set(self, id_wrote_id, Qnil);
+        server_end_requests(server);
     }
 }
 
@@ -491,6 +503,7 @@ static void resp_finish(VALUE self, bool disc)
     ennou_io_t* ennoup;
     OVERLAPPED over;
     ULONG ret;
+    VALUE server;
     VALUE wrote = rb_ivar_get(self, id_wrote_id);
     if (NIL_P(wrote)) return;
     if (wrote == Qfalse)
@@ -502,10 +515,11 @@ static void resp_finish(VALUE self, bool disc)
     {
         disc = true;
     }
+    server = rb_ivar_get(self, id_server_id);
     memset(&over, 0, sizeof(over));
     over.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     Data_Get_Struct(self, ennou_io_t, ennoup);
-    ret = HttpSendResponseEntityBody((HANDLE)NUM2LL(rb_ivar_get(rb_ivar_get(self, id_server_id), id_handle_id)),
+    ret = HttpSendResponseEntityBody((HANDLE)NUM2LL(rb_ivar_get(server, id_handle_id)),
                                      ennoup->requestId,
                                      (disc) ? HTTP_SEND_RESPONSE_FLAG_DISCONNECT : 0,
                                      0,
@@ -521,6 +535,7 @@ static void resp_finish(VALUE self, bool disc)
     }
     CloseHandle(over.hEvent);
     rb_ivar_set(self, id_wrote_id, Qnil);
+    server_end_requests(server);
 }
 
 #define BUFFSIZE 4096
@@ -632,8 +647,6 @@ static VALUE req_input(VALUE self)
  */
 static VALUE resp_close(VALUE self)
 {
-    VALUE wrote = rb_ivar_get(self, id_wrote_id);
-    if (NIL_P(wrote)) return Qnil;
     resp_finish(self, false);
     return Qnil;
 }
@@ -741,47 +754,61 @@ static VALUE resp_write(VALUE self, VALUE buff)
 
 static VALUE server_add(VALUE self, VALUE uri)
 {
-    PSTR uri8;
-    PSTR script;
-    VALUE gid = rb_ivar_get(self, id_group_id);
-    PCWSTR uri16 = to_wchar(uri);
-    ULONG ret = HttpAddUrlToUrlGroup(NUM2LL(gid),
-                                     uri16,
-                                     0, 0);
-    free((LPVOID)uri16);
-    if (ret != NO_ERROR)
+    if (RTEST(server_is_controller(self)))
     {
-        rb_raise(rb_eSystemCallError, "call HttpAddUrlToUrlGroup for %s (%d)",
-                 StringValueCStr(uri), ret);
-    }
-    uri8 = StringValueCStr(uri);
-    script = strrchr(uri8, '/');
-    if (!script || !*(script + 1))
-    {
-        rb_ivar_set(self, id_scriptname_id, EMPTY_STRING);
+        PSTR uri8;
+        PSTR script;
+        VALUE gid = rb_ivar_get(self, id_group_id);
+        PCWSTR uri16 = to_wchar(uri);
+        ULONG ret = HttpAddUrlToUrlGroup(NUM2LL(gid),
+                                         uri16,
+                                         0, 0);
+        free((LPVOID)uri16);
+        if (ret != NO_ERROR)
+        {
+            rb_raise(rb_eSystemCallError, "call HttpAddUrlToUrlGroup for %s (%d)",
+                     StringValueCStr(uri), ret);
+        }
+        uri8 = StringValueCStr(uri);
+        script = strrchr(uri8, '/');
+        if (!script || !*(script + 1))
+        {
+            rb_ivar_set(self, id_scriptname_id, EMPTY_STRING);
+        }
+        else
+        {
+            VALUE vscript = rb_str_new2(script);
+            rb_ivar_set(self, id_scriptname_id, rb_str_freeze(vscript));
+        }
+        return uri;
     }
     else
     {
-        VALUE vscript = rb_str_new2(script);
-        rb_ivar_set(self, id_scriptname_id, rb_str_freeze(vscript));
+        rb_raise(rb_eArgError, "add must be called by the controller");
     }
-    return uri;
 }
 
 static VALUE server_remove(VALUE self, VALUE uri)
 {
-    VALUE gid = rb_ivar_get(self, id_group_id);
-    PCWSTR uri16 = to_wchar(uri);
-    ULONG ret = HttpRemoveUrlFromUrlGroup(NUM2LL(gid),
-                                          uri16,
-                                          HTTP_URL_FLAG_REMOVE_ALL);
-    free((LPVOID)uri16);
-    if (ret != NO_ERROR)
+    if (RTEST(server_is_controller(self)))
     {
-        rb_raise(rb_eSystemCallError, "call HttpRemoveUrlFromUrlGroup for %s (%d)",
-                 StringValueCStr(uri), ret);
+        VALUE gid = rb_ivar_get(self, id_group_id);
+        PCWSTR uri16 = to_wchar(uri);
+        ULONG ret = HttpRemoveUrlFromUrlGroup(NUM2LL(gid),
+                                              uri16,
+                                              HTTP_URL_FLAG_REMOVE_ALL);
+        free((LPVOID)uri16);
+        if (ret != NO_ERROR)
+        {
+            rb_raise(rb_eSystemCallError, "call HttpRemoveUrlFromUrlGroup for %s (%d)",
+                     StringValueCStr(uri), ret);
+        }
+        return uri;
     }
-    return uri;
+    else
+    {
+        rb_raise(rb_eArgError, "remove must be called by the controller");
+    }
 }
 
 static VALUE server_set_script(VALUE self, VALUE script)
@@ -793,6 +820,32 @@ static VALUE server_set_script(VALUE self, VALUE script)
 static VALUE server_get_script(VALUE self)
 {
     return rb_ivar_get(self, id_scriptname_id);
+}
+
+static VALUE server_set_requests(VALUE self, VALUE value)
+{
+    rb_ivar_set(self, id_requests_id, value);
+    return value;
+}
+
+static VALUE server_get_requests(VALUE self)
+{
+    return rb_ivar_get(self, id_requests_id);
+}
+
+static VALUE server_end_requests(VALUE self)
+{
+    __int64 value = NUM2LL(server_get_requests(self));
+    if (value > 0)
+    {
+        server_set_requests(self, LL2NUM(--value));
+    }
+    return LL2NUM(value);
+}
+
+static void server_add_requests(VALUE self)
+{
+    server_set_requests(self, LL2NUM(NUM2LL(server_get_requests(self)) + 1));
 }
 
 static VALUE server_break(VALUE self)
@@ -939,13 +992,14 @@ static VALUE server_wait(VALUE self, VALUE secs)
         rb_ivar_set(resp, id_input_id, siop);
     }
     rb_ary_push(result, resp);
+    server_add_requests(self);
     return result;
 }
 
+#define MAX_WAIT_SECONDS 180000
 static VALUE server_close(VALUE self)
 {
     ULONG ret;
-    VALUE gid = rb_ivar_get(self, id_group_id);
     VALUE handle = rb_ivar_get(self, id_handle_id);
     VALUE evt = rb_ivar_get(self, id_event_id);
     if (!NIL_P(evt))
@@ -957,12 +1011,29 @@ static VALUE server_close(VALUE self)
     {
         rb_raise(rb_eSystemCallError, "call HttpShutdownRequestQueue %d", ret);
     }
-    ret = HttpCloseUrlGroup(NUM2LL(gid));
-    if (ret != NO_ERROR)
+    if (NUM2ULONG(server_get_requests(self)) > 0)
     {
-        rb_raise(rb_eSystemCallError, "call HttpCloseUrlGroup %d", ret);
+        ULONGLONG end;
+        HANDLE event = CreateEvent(NULL, FALSE, FALSE, NULL);
+        for (end = GetTickCount64() + MAX_WAIT_SECONDS; GetTickCount64() < end;)
+        {
+            rb_w32_wait_events(&event, 1, 100);
+            if (NUM2ULONG(server_get_requests(self)) == 0) break;
+        }
+        rb_w32_wait_events(&event, 1, 1000);
+        CloseHandle(event);
     }
-    rb_ivar_set(self, id_group_id, Qnil);
+
+    if (RTEST(server_is_controller(self)))
+    {
+        VALUE gid = rb_ivar_get(self, id_group_id);
+        ret = HttpCloseUrlGroup(NUM2LL(gid));
+        if (ret != NO_ERROR)
+        {
+            rb_raise(rb_eSystemCallError, "call HttpCloseUrlGroup %d", ret);
+        }
+        rb_ivar_set(self, id_group_id, Qnil);
+    }
     ret = HttpCloseRequestQueue((HANDLE)NUM2LL(handle));
     if (ret != NO_ERROR)
     {
@@ -979,20 +1050,17 @@ static VALUE server_initialize(int argc, VALUE* argv, VALUE svr)
     HANDLE queue;
     VALUE qname, multi;
     PCWSTR cqname;
+    BOOL server = FALSE;
     HTTPAPI_VERSION httpapi_version = HTTPAPI_VERSION_2;
     DECLARE_INFO(HTTP_BINDING_INFO);
 
     rb_scan_args(argc, argv, "11", &qname, &multi);
     Check_Type(qname, T_STRING);
-    ret = HttpCreateUrlGroup(session_id, &gid, 0);
-    if (ret != NO_ERROR)
-    {
-        rb_raise(rb_eSystemCallError, "call HttpCreateUrlGroup %d", ret);
-    }
-    rb_ivar_set(svr, id_group_id, LL2NUM(gid));
+    rb_ivar_set(svr, id_group_id, Qnil);
     rb_ivar_set(svr, id_controller_id, Qfalse);
     rb_ivar_set(svr, id_break_id, Qfalse);
     rb_ivar_set(svr, id_event_id, Qnil);
+    rb_ivar_set(svr, id_requests_id, LL2NUM(0));
     cqname = to_wchar(qname);
     if (RTEST(multi))
     {
@@ -1003,12 +1071,15 @@ static VALUE server_initialize(int argc, VALUE* argv, VALUE svr)
             rb_ivar_set(svr, id_controller_id, Qtrue);
             ret = HttpCreateRequestQueue(httpapi_version, cqname, NULL,
                                       HTTP_CREATE_REQUEST_QUEUE_FLAG_CONTROLLER, &queue);
+            server = TRUE;
         }
     }
     else
     {
+        rb_ivar_set(svr, id_controller_id, Qtrue);
         ret = HttpCreateRequestQueue(httpapi_version, cqname, NULL,
                                      0, &queue);
+        server = TRUE;        
     }
     free((LPVOID)cqname);
     if (ret != NO_ERROR)
@@ -1016,12 +1087,21 @@ static VALUE server_initialize(int argc, VALUE* argv, VALUE svr)
         rb_raise(rb_eFatal, "can't create request queue: %d", stat);
     }
     rb_ivar_set(svr, id_handle_id, LL2NUM((__int64)queue));
-    info.Flags.Present = 1;
-    info.RequestQueueHandle = queue;
-    ret = HttpSetUrlGroupProperty(gid, HttpServerBindingProperty, &info, sizeof(info));
-    if (ret != NO_ERROR)
+    if (server)
     {
-        rb_raise(rb_eSystemCallError, "Binding Queue %d", ret);
+        ret = HttpCreateUrlGroup(session_id, &gid, 0);
+        if (ret != NO_ERROR)
+        {
+            rb_raise(rb_eSystemCallError, "call HttpCreateUrlGroup %d", ret);
+        }
+        rb_ivar_set(svr, id_group_id, LL2NUM(gid));
+        info.Flags.Present = 1;
+        info.RequestQueueHandle = queue;
+        ret = HttpSetUrlGroupProperty(gid, HttpServerBindingProperty, &info, sizeof(info));
+        if (ret != NO_ERROR)
+        {
+            rb_raise(rb_eSystemCallError, "Binding Queue %d", ret);
+        }
     }
     return svr;
 }
@@ -1111,6 +1191,7 @@ void Init_ennou()
     id_input_id = rb_intern("@input");
     id_controller_id = rb_intern("@controller");
     id_scriptname_id = rb_intern("@scriptname");
+    id_requests_id = rb_intern("@requests");
     id_str_encode = rb_intern("encode");
     id_bytesize = rb_intern("bytesize");
     id_downcase = rb_intern("downcase");
@@ -1134,6 +1215,7 @@ void Init_ennou()
     rb_define_method(server_class, "remove", server_remove, 1);
     rb_define_method(server_class, "script=", server_set_script, 1);
     rb_define_method(server_class, "script", server_get_script, 0);
+    rb_define_method(server_class, "requests", server_get_requests, 0);
     rb_mod_attr(1, &symgid, server_class);
 
     ennou_io = rb_define_class_under(ennou, "EnnouIO", rb_cObject);

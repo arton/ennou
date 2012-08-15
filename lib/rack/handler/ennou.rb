@@ -8,7 +8,7 @@ module Rack
   module Handler
     class Ennou
 
-      VERSION = '1.1.7'
+      VERSION = '1.1.8'
       QNAME = 'Ennou_Queue'
       
       def self.setup(options)
@@ -86,10 +86,10 @@ module Rack
             body.each do |str|
               io.write str
             end
-            io.close
           rescue
             p $! if $debug
           ensure
+            io.close
             body.close if body.respond_to? :close
           end
         end

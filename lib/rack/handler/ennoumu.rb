@@ -43,6 +43,7 @@ module Rack
               sleep 1
             end  
             @logger.info "Ennou(#{::Ennou::VERSION}) controller pid=#{$$} stop"
+            Process.waitall
           else
             server.script =  @script
             @logger.info "script=#{server.script}, #{@script}"
