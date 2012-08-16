@@ -78,7 +78,7 @@ module Rack
       private
 
       def self.create_qname
-        qname = "#{QNAME}_#{(@qnamae.nil?) ? ((@script == '') ? @host : @script) : @qname}".gsub('/', '')
+        qname = "#{QNAME}_#{(@qname.nil?) ? ((@script == '') ? @host : @script) : @qname}".gsub('/', '')
         @logger.info 'EnnouMu qname=' + qname
         qname
       end

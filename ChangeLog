@@ -1,3 +1,5 @@
+Thu Aug 16 14:11:12 2012 Tajima Akio <artonx@yahoo.co.jp>
+	* lib/rack/hanlder/ennoumu.rb: fix typo of qname variable's name
 Tue Aug 14 23:25:30 2012 Tajima Akio <artonx@yahoo.co.jp>
 	* ext/ennou/ennou.c: add requests property for checking active clients count while closing
 	                     open/close group by the controller only
