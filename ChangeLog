@@ -1,4 +1,8 @@
 Tue Aug 28 17:03:20 2012  CHIKANAGA Tomoyuki  <nagachika@ruby-lang.org>
+	* lib/rack/handler/ennoumu.rb: make ruby.exe path from 'bindir'.
+	  bacause 'rackup' could not be the script bundled with NougakuDo when
+	  executed via 'bundle exec'.
+Tue Aug 28 17:03:20 2012  CHIKANAGA Tomoyuki  <nagachika@ruby-lang.org>
 	* lib/rack/handler/ennoumu.rb: support the wildcard VirtualHost with
 	  multiprocess handler.
 Thu Aug 16 14:11:12 2012 Tajima Akio <artonx@yahoo.co.jp>
