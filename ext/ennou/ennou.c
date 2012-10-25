@@ -399,10 +399,15 @@ static ULONG wait_io(VALUE self, ULONG stat, LPOVERLAPPED ov, const char* func, 
             if (stat == WAIT_TIMEOUT) continue;
             if (stat == WAIT_OBJECT_0) break;
         }
-        if (stat == WAIT_OBJECT_0 + 1 || RTEST(rb_ivar_get(self, id_break_id)))
+        if (RTEST(rb_ivar_get(self, id_break_id)))
         {
             dwError = WSAEINTR;
             exc = rb_eInterrupt;
+        }
+        else if (stat == WAIT_OBJECT_0 + 1)
+        {
+            rb_thread_check_ints();
+            continue;
         }
         else
         {
