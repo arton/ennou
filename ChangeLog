@@ -1,3 +1,5 @@
+Fri Oct 26 22:00:00 2012   CHIKANAGA Tomoyuki  <nagachika@ruby-lang.org>
+	* ext/ennou/ennou.c (wait_io): retry when rb_w32_wait_events() return…
 Tue Aug 28 17:03:20 2012  CHIKANAGA Tomoyuki  <nagachika@ruby-lang.org>
 	* lib/rack/handler/ennoumu.rb: make ruby.exe path from 'bindir'.
 	  bacause 'rackup' could not be the script bundled with NougakuDo when
