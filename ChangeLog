@@ -1,5 +1,7 @@
+Tue Apr 04 21:59:00 2013   Tajima Akio <artonx@gmail.com>
+	* lib/rack/handler/ennoust.rb single thread per a process handler
 Fri Oct 26 22:00:00 2012   CHIKANAGA Tomoyuki  <nagachika@ruby-lang.org>
-	* ext/ennou/ennou.c (wait_io): retry when rb_w32_wait_events() return‚Ä¶
+	* ext/ennou/ennou.c (wait_io): retry when rb_w32_wait_events() returnÅc
 Tue Aug 28 17:03:20 2012  CHIKANAGA Tomoyuki  <nagachika@ruby-lang.org>
 	* lib/rack/handler/ennoumu.rb: make ruby.exe path from 'bindir'.
 	  bacause 'rackup' could not be the script bundled with NougakuDo when
