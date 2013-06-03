@@ -9,9 +9,9 @@ require_relative './ennou.rb'
  
 module Rack
   module Handler
-    class Ennoumu < Ennou
+    class Ennoust < Ennou
  
-      QNAME = 'EnnouMu_Queue'
+      QNAME = 'EnnouSt_Queue'
  
       @qname = nil
       @nprocs = 2
