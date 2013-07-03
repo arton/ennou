@@ -1,3 +1,6 @@
+Thu Jul 04 00:01:00 2013   Tajima Akio <artonx@gmail.com> on behalf of sibapy
+	* lib/rack/handler/ennoust.rb spawn child if sudden death
+	* lib/rack/handler/ennoumu.rb spawn child if sudden death
 Tue Apr 04 21:59:00 2013   Tajima Akio <artonx@gmail.com>
 	* lib/rack/handler/ennoust.rb single thread per a process handler
 Fri Oct 26 22:00:00 2012   CHIKANAGA Tomoyuki  <nagachika@ruby-lang.org>

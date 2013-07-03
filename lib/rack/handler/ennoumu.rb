@@ -42,7 +42,14 @@ module Rack
               @logger.info " spawn worker pid=#{pids.last}"
             end
             until @stoprun do
-              sleep 1
+              chld = Process.wait
+              pids.reject! {|pid| pid == chld}
+              if $?.exitstatus == 2
+                # spawn the new worker process(ad hoc)
+                pids << spawn(cmd)
+                @logger.info " spawn worker pid=#{pids.last}"
+                STDOUT.print "\n"
+              end
             end  
             @logger.info "Ennou(#{::Ennou::VERSION}) controller pid=#{$$} stop"
             Process.waitall
@@ -50,6 +57,7 @@ module Rack
             server.script =  @script
             @logger.info "script=#{server.script}, #{@script}"
             @logger.info "Ennou(#{::Ennou::VERSION}) start for http://#{@host}:#{@port}#{@script} pid=#{$$}"
+            ret = 0
             loop do
               begin
                 r = server.wait(60)
@@ -57,9 +65,13 @@ module Rack
                 run_thread(app, *r)
               rescue Interrupt
                 break
+              rescue => e
+                ret = 2
+                break
               end
             end
             @logger.info "Ennou(#{::Ennou::VERSION}) stop service for http://#{@host}:#{@port}#{@script} pid=#{$$}"
+            exit ret
           end
         end
       end   
