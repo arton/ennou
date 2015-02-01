@@ -1,3 +1,5 @@
+Mon Jan 02 01:02:00 2015   Tajima Akio <artonx@gmail.com>
+	* Rakefile replace Rake::GemPackageTask with Gem::PackageTask
 Thu Jul 04 23:37:00 2013   Tajima Akio <artonx@gmail.com> on behalf of sibapy
 	* lib/rack/handler/ennoust.rb fix Ennoust class name in command line parameters
 Thu Jul 04 00:01:00 2013   Tajima Akio <artonx@gmail.com> on behalf of sibapy

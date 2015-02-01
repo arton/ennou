@@ -1,5 +1,6 @@
 require 'fileutils'
 require 'rake/extensiontask'
+require 'rubygems/package_task'
 
 def read_version
   File.open('ext/ennou/ennou.c').each_line do |x|
@@ -44,7 +45,7 @@ Ennou is Rackable Web Server stands on Http.sys.
 EOD
 end
 
-Rake::GemPackageTask.new(spec) do |pkg|
+Gem::PackageTask.new(spec) do |pkg|
   pkg.gem_spec = spec
   pkg.need_zip = false
   pkg.need_tar = false  
