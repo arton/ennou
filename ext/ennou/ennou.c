@@ -25,6 +25,7 @@
 
 /* for ruby */
 #include "ruby.h"
+#include "ruby/encoding.h"
 
 #include "ennou.h"
 
