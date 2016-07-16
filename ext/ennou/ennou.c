@@ -600,8 +600,6 @@ static VALUE req_input(VALUE self)
     else
     {
         VALUE args[2];
-        VALUE rbuff = rb_external_str_new_with_enc(NULL, BUFFSIZE, rb_ascii8bit_encoding());
-        char* buff = StringValuePtr(rbuff);
         args[0] = rb_str_new("ennou", 5);
         args[1] = rb_hash_new();
         rb_hash_aset(args[1], ID2SYM(id_encoding), rb_enc_from_encoding(rb_ascii8bit_encoding()));
@@ -610,7 +608,7 @@ static VALUE req_input(VALUE self)
         rb_funcall(input, id_binmode, 0);
         for (;;)
         {
-            rb_str_set_len(rbuff, BUFFSIZE);
+            char buff[BUFFSIZE];
             ret = HttpReceiveRequestEntityBody(queue, ennoup->requestId,
                                                0, 
                                                buff, BUFFSIZE,
@@ -630,11 +628,8 @@ static VALUE req_input(VALUE self)
                 CloseHandle(over.hEvent);                
                 rb_raise(rb_eSystemCallError, "retrieve request body (%d)",  GetLastError());
             }
-            if (rb_str_strlen(rbuff) != bytesRead)
-            {
-                rb_str_set_len(rbuff, bytesRead);
-            }
-            rb_funcall(input, id_write, 1, rbuff);
+            rb_funcall(input, id_write, 1,
+		       rb_external_str_new_with_enc(buff, bytesRead, rb_ascii8bit_encoding()));
             ResetEvent(over.hEvent);
         }
         rb_funcall(input, id_open, 0);

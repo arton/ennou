@@ -380,12 +380,17 @@ class TestServer < Test::Unit::TestCase
             assert_equal data, resp.body
           end
         end
-        env, io = s.wait(0.1)
-        reqdata = io.input.read
+        begin
+          env, io = s.wait(0.5)
+          reqdata = io.input.read
+        rescue => e
+          t.kill
+          io.close if io
+          assert false, "read failure:#{e}"
+        end  
         assert Tempfile === io.input
         assert_equal data, reqdata
         assert Encoding::BINARY === reqdata.encoding
-        
         io.status = 200
         io.headers = { 'content-type' => "text/plain" }
         io.write data
